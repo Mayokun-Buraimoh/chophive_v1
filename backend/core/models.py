@@ -4,6 +4,8 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils.text import slugify
 from userauths.models import User
+from shortuuid.django_fields import ShortUUIDField
+from django.utils import timezone
 
 # Create your models here.
 class Vendor(models.Model):
@@ -58,7 +60,9 @@ class FoodItem(models.Model):
     is_available = models.BooleanField(default=True, help_text="Whether the food item is currently available")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    item_id = models.CharField(max_length=100, unique=True, blank=True, help_text="Unique item identifier")
+    item_id = ShortUUIDField(unique=True, length=10, max_length=20, alphabet="abcdefghijklmnopqrstuvxyz")
+    orders = models.PositiveIntegerField(default=0, null=True, blank=True)
+    
     
     class Meta:
         verbose_name = "Food Item"
@@ -138,18 +142,18 @@ class Cart(models.Model):
     sub_total = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     service_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    total = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     cart_id = models.CharField(max_length=100, unique=True, blank=True)
-    
+    date = models.DateTimeField(auto_now_add=True)
+    price = models.DecimalField(decimal_places=2, max_digits=12, default=0.00, null=True, blank=True)
+
     class Meta:
         verbose_name = "Cart"
         verbose_name_plural = "Carts"
     
     def __str__(self):
-        if self.user:
-            return f"Cart for {self.user.username}"
-        return f"Cart {self.cart_id or '(new)'}"
-    
+        return f'{self.cart_id} - {self.food_item.name}'
+
     def save(self, *args, **kwargs):
         """Auto-generate a unique cart_id if missing."""
         if not self.cart_id:
@@ -172,36 +176,36 @@ class Cart(models.Model):
         return sum(item.quantity for item in self.items.all())
 
 
-class CartItem(models.Model):
-    """
-    Individual items in a shopping cart.
-    """
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='cart_items', help_text="Cart item user")
-    vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name='cart_items', help_text="Cart item vendor")
+# class CartItem(models.Model):
+#     """
+#     Individual items in a shopping cart.
+#     """
+#     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='cart_items', help_text="Cart item user")
+#     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name='cart_items', help_text="Cart item vendor")
     
-    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items', help_text="Parent cart")
-    food_item = models.ForeignKey(FoodItem, on_delete=models.CASCADE, related_name='cart_items', help_text="Food item in cart")
-    quantity = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)], help_text="Quantity of this item")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+#     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items', help_text="Parent cart")
+#     food_item = models.ForeignKey(FoodItem, on_delete=models.CASCADE, related_name='cart_items', help_text="Food item in cart")
+#     quantity = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)], help_text="Quantity of this item")
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
     
-    class Meta:
-        verbose_name = "Cart Item"
-        verbose_name_plural = "Cart Items"
-        unique_together = ['cart', 'food_item']  # One cart item entry per food item per cart
+#     class Meta:
+#         verbose_name = "Cart Item"
+#         verbose_name_plural = "Cart Items"
+#         unique_together = ['cart', 'food_item']  # One cart item entry per food item per cart
     
-    def __str__(self):
-        return f"{self.quantity}x {self.food_item.name} in {self.cart.user.username}'s cart"
+#     def __str__(self):
+#         return f"{self.quantity}x {self.food_item.name} in {self.cart.user.username}'s cart"
     
-    @property
-    def subtotal(self):
-        """Calculate subtotal for this cart item."""
-        return self.food_item.price * self.quantity
+#     @property
+#     def subtotal(self):
+#         """Calculate subtotal for this cart item."""
+#         return self.food_item.price * self.quantity
     
-    @property
-    def price(self):
-        """Return price per unit (for API consistency)."""
-        return self.food_item.price
+#     @property
+#     def price(self):
+#         """Return price per unit (for API consistency)."""
+#         return self.food_item.price
 
 
 class Order(models.Model):
@@ -221,10 +225,13 @@ class Order(models.Model):
         ('Failed', 'Failed'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders', help_text="Order customer")
+    buyer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="buyer", blank=True)
     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name='orders', blank=True, null=True, help_text="Primary vendor (nullable for multi-vendor orders)")
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Total order amount")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending', help_text="Order status")
+    sub_total = models.DecimalField(default=0.00, max_digits=12, decimal_places=2)
+    service_fee = models.DecimalField(default=0.00, max_digits=12, decimal_places=2)
+    total = models.DecimalField(default=0.00, max_digits=12, decimal_places=2)
     delivery_address = models.TextField(help_text="Delivery address for this order")
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='Pending', help_text="Payment status")
     payment_id = models.CharField(max_length=200, blank=True, help_text="Stripe transaction ID or payment reference")
@@ -234,7 +241,8 @@ class Order(models.Model):
     delivery_batch = models.CharField(max_length=200, blank=True, help_text="Delivery batch")
     order_pin = models.IntegerField(blank=True, null=True, help_text="Order pin (4 digits)", unique=True)
     approved = models.BooleanField(default=False, help_text="Whether the order has been approved")
-    
+    oid = ShortUUIDField(length=10, max_length=25, alphabet="abcdefghijklmnopqrstuvxyz")
+
     class Meta:
         verbose_name = "Order"
         verbose_name_plural = "Orders"
@@ -242,6 +250,12 @@ class Order(models.Model):
     
     def __str__(self):
         return f"Order #{self.id} - {self.user.username} - {self.vendor.name}"
+    
+    def __str__(self):
+        return self.oid
+    
+    def get_order_items(self):
+        return OrderItem.objects.filter(order=self)
     
     def save(self, *args, **kwargs):
         """Auto-generate a unique 4-digit order_pin if not provided."""
@@ -275,11 +289,26 @@ class OrderItem(models.Model):
     food_item = models.ForeignKey(FoodItem, on_delete=models.PROTECT, related_name='order_items', help_text="Food item in order")
     quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)], help_text="Quantity ordered")
     price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))], help_text="Price at time of order")
+    sub_total = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, help_text="Total of Product price * Product Qty")
+    service_fee = models.DecimalField(default=0.00, max_digits=12, decimal_places=2, help_text="Estimated Service Fee = service_fee * total (paid by buyer to platform)")
+    total = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, help_text="Grand Total of all amount listed above")
+    date = models.DateTimeField(default=timezone.now)
     
     class Meta:
         verbose_name = "Order Item"
         verbose_name_plural = "Order Items"
     
+    def order_img(self):
+        return mark_safe('<img src="%s" width="50" height="50" style="object-fit:cover; border-radius: 6px;" />' % (self.product.image.url))
+   
+    # Method to return a formatted order ID
+    def order_id(self):
+        return f"Order ID #{self.order.oid}"
+    
+    # Method to return a string representation of the object
+    def __str__(self):
+        return self.oid
+
     def __str__(self):
         """Return string representation of order item."""
         food_name = self.food_item.name if self.food_item else "Unknown Item"

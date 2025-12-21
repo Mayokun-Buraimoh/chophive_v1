@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     'api',
     'core',
     'userauths',
+    'customer',
+    'import_export', 
 
 ]
 

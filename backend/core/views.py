@@ -7,8 +7,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError, NotFound
 
-from core.models import Cart, CartItem, Category, FoodItem, Order, OrderItem, Vendor
-from core.serializers import CartSerializer, CategorySerializer, FoodItemSerializer, OrderSerializer, VendorDetailSerializer, VendorSerializer
+from core.models import Cart, Category, FoodItem, Order, OrderItem, Vendor
+from core.serializers import CartSerializer, CategorySerializer, FoodItemSerializer, OrderSerializer, VendorSerializer
 from userauths.models import User, Profile
 from userauths.serializers import ProfileSerializer
 
@@ -28,7 +28,7 @@ class VendorListView(generics.ListAPIView):
     
 class VendorDetailView(generics.RetrieveAPIView):
     queryset = Vendor.objects.all()
-    serializer_class = VendorDetailSerializer
+    serializer_class = VendorSerializer
     permission_classes = [AllowAny]
     lookup_field = 'id'
     lookup_url_kwarg = 'vendor_id'
@@ -42,7 +42,8 @@ class FoodItemDetailView(generics.RetrieveAPIView):
     queryset = FoodItem.objects.all()
     serializer_class = FoodItemSerializer
     permission_classes = [AllowAny]
-    
+    lookup_field = 'item_id'
+
 class CartAPIView(generics.ListCreateAPIView):
     """
     List or create cart items.
@@ -59,8 +60,8 @@ class CartAPIView(generics.ListCreateAPIView):
         user_id = payload['user_id']
         qty = payload['qty']
         price = payload['price']
-        delivery_fee = payload['shipping_amount']
-        service_fee = payload['service_fee']
+        # delivery_fee = payload['shipping_amount']
+        # service_fee = payload['service_fee']
         cart_id= payload['cart_id']
         
         item = FoodItem.objects.get(id=item_id)
@@ -76,10 +77,11 @@ class CartAPIView(generics.ListCreateAPIView):
             cart.user = user
             cart.qty = qty
             cart.price = price
-            cart.sub_total = Decimal(price) * int(qty)
-            cart.delivery_fee = Decimal(delivery_fee) * int(qty)
-            cart.service_fee = Decimal(service_fee) 
-            cart.total_amount = cart.sub_total + cart.delivery_fee + cart.service_fee
+            # cart.sub_total = Decimal(price) * int(qty)
+            # cart.delivery_fee = Decimal(delivery_fee) * int(qty)
+            # cart.service_fee = Decimal(service_fee) 
+            # cart.total_amount = cart.sub_total + cart.delivery_fee + cart.service_fee
+            cart.cart_id = cart_id
             cart.save()
             return Response({'message':"Cart updated successfully"}, status=status.HTTP_200_OK)
         
@@ -89,14 +91,48 @@ class CartAPIView(generics.ListCreateAPIView):
             cart.user = user
             cart.qty = qty
             cart.price = price 
-            cart.sub_total = Decimal(price) * int(qty)
-            cart.delivery_fee = Decimal(delivery_fee) * int(qty)
-            cart.service_fee = Decimal(service_fee) 
+            # cart.sub_total = Decimal(price) * int(qty)
+            # cart.delivery_fee = Decimal(delivery_fee) * int(qty)
+            # cart.service_fee = Decimal(service_fee) 
             cart.cart_id = cart_id
             cart.total_amount = cart.sub_total + cart.delivery_fee + cart.service_fee
             cart.save()
             return Response({'message':"Cart created successfully"}, status=status.HTTP_201_CREATED)
    
+class CartListView(generics.ListAPIView):
+    serializer_class = CartSerializer
+    permission_classes = (AllowAny,)
+
+    def get_queryset(self):
+        cart_id = self.kwargs['cart_id']
+        user_id = self.kwargs.get('user_id')  # Use get() method to handle the case where user_id is not present
+
+        
+        if user_id is not None:
+            user = User.objects.get(id=user_id)
+            queryset = Cart.objects.filter(Q(user=user, cart_id=cart_id) | Q(user=user))
+        else:
+            queryset = Cart.objects.filter(cart_id=cart_id)
+        
+        return queryset
+
+class CartTotalView(generics.ListAPIView):
+    serializer_class = CartSerializer
+    permission_classes = (AllowAny,)
+
+    def get_queryset(self):
+        cart_id = self.kwargs['cart_id']
+        user_id = self.kwargs.get('user_id')  # Use get() method to handle the case where user_id is not present
+
+        
+        if user_id is not None:
+            user = User.objects.get(id=user_id)
+            queryset = Cart.objects.filter(cart_id=cart_id, user=user)
+        else:
+            queryset = Cart.objects.filter(cart_id=cart_id)
+        
+        return queryset
+        
 class CustomerUpdateProfileView(generics.RetrieveUpdateAPIView):
     """
     Retrieve or update the authenticated user's profile.
@@ -271,261 +307,194 @@ class CreateOrderAPIView(generics.CreateAPIView):
     """
     serializer_class = OrderSerializer
     queryset = Order.objects.all()
-    permission_classes = [AllowAny]  # Allow both authenticated and unauthenticated requests
-    
+    permission_classes = (AllowAny,)
+
     def create(self, request, *args, **kwargs):
         payload = request.data
-        
-        # Get cart_id and optional user_id from URL parameters
-        cart_id = self.kwargs.get('cart_id')
-        url_user_id = self.kwargs.get('user_id')
-        
-        if not cart_id:
-            return Response(
-                {"error": "cart_id is required in URL"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Extract required fields from payload
-        delivery_address = payload.get('delivery_address') or payload.get('address', '')
-        
-        if not delivery_address:
-            return Response(
-                {"error": "delivery_address is required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Determine user: prefer authenticated user, fallback to user_id from URL
-        user = None
-        
-        if request.user.is_authenticated:
-            # User is authenticated via JWT token
-            user = request.user
-            
-            # If user_id is also in URL, validate it matches
-            if url_user_id and user.id != url_user_id:
-                return Response(
-                    {"error": "User ID in URL does not match authenticated user."},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-        elif url_user_id:
-            # No authentication, but user_id provided in URL
-            try:
-                user = User.objects.get(id=url_user_id)
-            except User.DoesNotExist:
-                return Response(
-                    {"error": f"User with ID {url_user_id} not found."},
-                    status=status.HTTP_404_NOT_FOUND
-                )
+
+        full_name = payload['full_name']
+        email = payload['email']
+        mobile = payload['mobile']
+        address = payload['address']
+        cart_id = payload['cart_id']
+        user_id = payload['user_id']
+
+        print("user_id ===============", user_id)
+
+        if user_id != 0:
+            user = User.objects.filter(id=user_id).first()
         else:
-            # Neither authenticated nor user_id provided
-            return Response(
-                {
-                    "error": "Authentication required. Please provide either:",
-                    "options": [
-                        "1. JWT token in Authorization header: 'Authorization: Bearer <token>'",
-                        "2. user_id in URL: /api/v1/create-order/{cart_id}/{user_id}/"
-                    ]
-                },
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        
-        # Get all cart items (Cart model has food_item directly)
+            user = None
+
         cart_items = Cart.objects.filter(cart_id=cart_id)
-        
-        if not cart_items.exists():
-            return Response(
-                {"error": "Cart is empty. Please add items to cart before placing an order."},
-                status=status.HTTP_400_BAD_REQUEST
+
+        total_service_fee = Decimal(0.0)
+        total_sub_total = Decimal(0.0)
+        total_initial_total = Decimal(0.0)
+        total_total = Decimal(0.0)
+
+        with transaction.atomic():
+
+            order = Order.objects.create(
+                # sub_total=total_sub_total,
+                # shipping_amount=total_shipping,
+                # tax_fee=total_tax,
+                # service_fee=total_service_fee,
+                buyer=user,
+                payment_status="processing",
+                full_name=full_name,
+                email=email,
+                mobile=mobile,
+                address=address,
             )
-        
-        # Determine primary vendor (first vendor found, or None for multi-vendor orders)
-        vendors = set()
-        for cart_item in cart_items:
-            if cart_item.food_item and cart_item.food_item.vendor:
-                vendors.add(cart_item.food_item.vendor)
-        
-        primary_vendor = vendors.pop() if vendors else None
-        # If multiple vendors, set primary_vendor to None or first vendor
-        # For now, we'll use the first vendor as primary, but order can have items from multiple vendors
-        
-        total_amount = Decimal('0.00')
-        total_delivery_fee = Decimal('0.00')
-        total_service_fee = Decimal('0.00')
-        
-        # Create a single order for all items (can contain items from multiple vendors)
-        order = Order.objects.create(
-            user=user,
-            vendor=primary_vendor,  # Primary vendor (nullable, can be None for multi-vendor)
-            delivery_address=delivery_address,
-            status='Pending',
-            payment_status='Processing',
-        )
-        
-        # Group items by vendor for response
-        vendor_items = defaultdict(list)
-        
-        # Create order items and calculate totals
-        for cart_item in cart_items:
-            if not cart_item.food_item:
-                continue
+
+            for c in cart_items:
+                OrderItem.objects.create(
+                    order=order,
+                    product=c.product,
+                    qty=c.qty,
+                    price=c.price,
+                    sub_total=c.sub_total,
+                    service_fee=c.service_fee,
+                    total=c.total,
+                    initial_total=c.total,
+                    vendor=c.product.vendor
+                )
+
+                total_shipping += Decimal(c.shipping_amount)
+                total_tax += Decimal(c.tax_fee)
+                total_service_fee += Decimal(c.service_fee)
+                total_sub_total += Decimal(c.sub_total)
+                total_initial_total += Decimal(c.total)
+                total_total += Decimal(c.total)
+
+                order.vendor.add(c.product.vendor)
+
                 
-            food_item = cart_item.food_item
-            vendor = food_item.vendor
-            item_price = food_item.price
-            quantity = cart_item.qty  # Cart uses 'qty' field
+
+            order.sub_total=total_sub_total
+            order.shipping_amount=total_shipping
+            order.tax_fee=total_tax
+            order.service_fee=total_service_fee
+            order.initial_total=total_initial_total
+            order.total=total_total
+
             
-            # Create order item with its vendor
-            order_item = OrderItem.objects.create(
-                order=order,
-                food_item=food_item,
-                vendor=vendor,
-                quantity=quantity,
-                price=item_price,
-            )
-            
-            # Calculate totals
-            item_subtotal = Decimal(str(item_price)) * Decimal(quantity)
-            total_amount += item_subtotal
-            
-            # Track items by vendor for response
-            vendor_items[vendor.name].append({
-                'food_item': food_item.name,
-                'quantity': quantity,
-                'price': str(item_price),
-                'subtotal': str(item_subtotal),
-            })
-        
-        # Add delivery and service fees to total (sum from all cart items)
-        # For multi-vendor orders, we sum fees from all items
-        for cart_item in cart_items:
-            total_delivery_fee += Decimal(str(cart_item.delivery_fee)) if hasattr(cart_item, 'delivery_fee') else Decimal('0.00')
-            total_service_fee += Decimal(str(cart_item.service_fee)) if hasattr(cart_item, 'service_fee') else Decimal('0.00')
-        
-        total_amount += total_delivery_fee + total_service_fee
-        
-        # Update order with calculated total
-        order.total_amount = total_amount
-        order.save()
-        
-        return Response({
-            "message": "Order Created Successfully",
-            "order": {
-                "order_id": order.id,
-                "order_pin": order.order_pin,
-                "primary_vendor": primary_vendor.name if primary_vendor else None,
-                "vendors": list(vendor_items.keys()),  # List of all vendors in this order
-                "items_by_vendor": dict(vendor_items),  # Items grouped by vendor
-                "total_amount": str(total_amount),
-                "delivery_fee": str(total_delivery_fee),
-                "service_fee": str(total_service_fee),
-                "status": order.status,
-                "payment_status": order.payment_status,
-            }
-        }, status=status.HTTP_201_CREATED)
-    
-class CheckoutView(generics.ListAPIView):
-    """
-    Retrieve order details for checkout summary.
-    Endpoint: GET /api/v1/checkout/{user_id}/ or GET /api/v1/checkout/{user_id}/{order_id}/
-    Returns order details with items and totals for checkout confirmation.
-    
-    Authentication:
-    - Option 1: Provide JWT token in Authorization header (recommended)
-    - Option 2: Provide user_id in URL (less secure)
-    
-    If order_id is provided, returns that specific order.
-    If only user_id is provided, returns the latest order for that user.
-    """
+            order.save()
+
+        return Response( {"message": "Order Created Successfully", 'order_oid':order.oid}, status=status.HTTP_201_CREATED)
+
+class CheckoutView(generics.RetrieveAPIView):
     serializer_class = OrderSerializer
-    permission_classes = [AllowAny]  # Allow both authenticated and unauthenticated
+    lookup_field = 'order_oid'  
+
+    def get_object(self):
+        order_oid = self.kwargs['order_oid']
+        cart = get_object_or_404(Order, oid=order_oid)
+        return cart
+
+# class CheckoutView(generics.ListAPIView):
+#     """
+#     Retrieve order details for checkout summary.
+#     Endpoint: GET /api/v1/checkout/{user_id}/ or GET /api/v1/checkout/{user_id}/{order_id}/
+#     Returns order details with items and totals for checkout confirmation.
     
-    def get_queryset(self):
-        """Get orders based on user_id from URL or authenticated user."""
-        user_id = self.kwargs.get('user_id')
-        order_id = self.kwargs.get('order_id')
-        
-        # Determine user
-        user = None
-        if self.request.user.is_authenticated:
-            user = self.request.user
-            # If user_id in URL, validate it matches authenticated user
-            if user_id and user.id != int(user_id):
-                return Order.objects.none()  # Return empty queryset if mismatch
-        elif user_id:
-            try:
-                user = User.objects.get(id=user_id)
-            except User.DoesNotExist:
-                return Order.objects.none()
-        else:
-            return Order.objects.none()
-        
-        # Filter orders by user
-        queryset = Order.objects.filter(user=user).order_by('-created_at')
-        
-        # If order_id is provided, filter to that specific order
-        if order_id:
-            queryset = queryset.filter(id=order_id)
-        
-        return queryset
+#     Authentication:
+#     - Option 1: Provide JWT token in Authorization header (recommended)
+#     - Option 2: Provide user_id in URL (less secure)
     
-    def list(self, request, *args, **kwargs):
-        """List orders or retrieve specific order with checkout summary."""
-        queryset = self.get_queryset()
+#     If order_id is provided, returns that specific order.
+#     If only user_id is provided, returns the latest order for that user.
+#     """
+#     serializer_class = OrderSerializer
+#     permission_classes = [AllowAny]  # Allow both authenticated and unauthenticated
+    
+#     def get_queryset(self):
+#         """Get orders based on user_id from URL or authenticated user."""
+#         user_id = self.kwargs.get('user_id')
+#         order_id = self.kwargs.get('order_id')
         
-        if not queryset.exists():
-            raise NotFound({
-                "error": "No orders found",
-                "message": "No orders found for the specified user."
-            })
+#         # Determine user
+#         user = None
+#         if self.request.user.is_authenticated:
+#             user = self.request.user
+#             # If user_id in URL, validate it matches authenticated user
+#             if user_id and user.id != int(user_id):
+#                 return Order.objects.none()  # Return empty queryset if mismatch
+#         elif user_id:
+#             try:
+#                 user = User.objects.get(id=user_id)
+#             except User.DoesNotExist:
+#                 return Order.objects.none()
+#         else:
+#             return Order.objects.none()
         
-        # Get the first order (latest if multiple, or specific if order_id provided)
-        order = queryset.first()
+#         # Filter orders by user
+#         queryset = Order.objects.filter(user=user).order_by('-created_at')
         
-        # Calculate totals from order items
-        order_items = order.items.all()
-        items_data = []
-        calculated_subtotal = Decimal('0.00')
+#         # If order_id is provided, filter to that specific order
+#         if order_id:
+#             queryset = queryset.filter(id=order_id)
         
-        for item in order_items:
-            item_subtotal = Decimal(str(item.price)) * Decimal(item.quantity)
-            calculated_subtotal += item_subtotal
-            items_data.append({
-                'food_item': item.food_item.name,
-                'food_item_id': item.food_item.item_id,
-                'quantity': item.quantity,
-                'price': str(item.price),
-                'subtotal': str(item_subtotal),
-            })
+#         return queryset
+    
+#     def list(self, request, *args, **kwargs):
+#         """List orders or retrieve specific order with checkout summary."""
+#         queryset = self.get_queryset()
         
-        # Get delivery and service fees (if stored separately, otherwise calculate)
-        # For now, using order total_amount - calculated_subtotal as fees
-        fees = order.total_amount - calculated_subtotal
+#         if not queryset.exists():
+#             raise NotFound({
+#                 "error": "No orders found",
+#                 "message": "No orders found for the specified user."
+#             })
         
-        # Get unique vendors from order items
-        vendors_set = set()
-        for item in order_items:
-            if item.vendor:
-                vendors_set.add(item.vendor.name)
+#         # Get the first order (latest if multiple, or specific if order_id provided)
+#         order = queryset.first()
         
-        checkout_summary = {
-            'order_id': order.id,
-            'order_pin': order.order_pin,
-            'primary_vendor': order.vendor.name if order.vendor else None,
-            'vendors': list(vendors_set),  # List of all vendors in this order
-            'status': order.status,
-            'payment_status': order.payment_status,
-            'delivery_address': order.delivery_address,
-            'items': items_data,
-            'summary': {
-                'subtotal': str(calculated_subtotal),
-                'fees': str(fees),
-                'total_amount': str(order.total_amount),
-            },
-            'created_at': order.created_at,
-        }
+#         # Calculate totals from order items
+#         order_items = order.items.all()
+#         items_data = []
+#         calculated_subtotal = Decimal('0.00')
         
-        return Response(checkout_summary, status=status.HTTP_200_OK)
+#         for item in order_items:
+#             item_subtotal = Decimal(str(item.price)) * Decimal(item.quantity)
+#             calculated_subtotal += item_subtotal
+#             items_data.append({
+#                 'food_item': item.food_item.name,
+#                 'food_item_id': item.food_item.item_id,
+#                 'quantity': item.quantity,
+#                 'price': str(item.price),
+#                 'subtotal': str(item_subtotal),
+#             })
+        
+#         # Get delivery and service fees (if stored separately, otherwise calculate)
+#         # For now, using order total_amount - calculated_subtotal as fees
+#         fees = order.total_amount - calculated_subtotal
+        
+#         # Get unique vendors from order items
+#         vendors_set = set()
+#         for item in order_items:
+#             if item.vendor:
+#                 vendors_set.add(item.vendor.name)
+        
+#         checkout_summary = {
+#             'order_id': order.id,
+#             'order_pin': order.order_pin,
+#             'primary_vendor': order.vendor.name if order.vendor else None,
+#             'vendors': list(vendors_set),  # List of all vendors in this order
+#             'status': order.status,
+#             'payment_status': order.payment_status,
+#             'delivery_address': order.delivery_address,
+#             'items': items_data,
+#             'summary': {
+#                 'subtotal': str(calculated_subtotal),
+#                 'fees': str(fees),
+#                 'total_amount': str(order.total_amount),
+#             },
+#             'created_at': order.created_at,
+#         }
+        
+#         return Response(checkout_summary, status=status.HTTP_200_OK)
         
             
       
