@@ -67,7 +67,7 @@ class CartAPIView(generics.ListCreateAPIView):
         if user_id != "undefined":
             user = User.objects.get(id=user_id)
         else:
-            user=None
+            user=None   
             
         cart = Cart.objects.filter(cart_id=cart_id, food_item=item).first()
         
