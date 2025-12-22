@@ -312,7 +312,7 @@ class CreateOrderAPIView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         payload = request.data
 
-        full_name = payload['full_name']
+        # full_name = payload['full_name']
         email = payload['email']
         mobile = payload['mobile']
         address = payload['address']
@@ -342,7 +342,7 @@ class CreateOrderAPIView(generics.CreateAPIView):
                 # service_fee=total_service_fee,
                 buyer=user,
                 payment_status="processing",
-                full_name=full_name,
+                # full_name=full_name,
                 email=email,
                 mobile=mobile,
                 address=address,

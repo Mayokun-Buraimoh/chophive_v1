@@ -17,7 +17,6 @@ class FoodItemAdmin(ImportExportModelAdmin):
     list_display = [ 'name',  'price','stock_qty', 'vendor']
     # actions = [make_published, make_in_review, make_featured]
     list_display_links = ['name']
-
     list_per_page = 100
     prepopulated_fields = {"slug": ("name", )}
     # form = ProductAdminForm
@@ -33,10 +32,10 @@ class CartAdmin(ImportExportModelAdmin):
     list_display = ['food_item', 'cart_id', 'qty', 'price', 'sub_total' ,'service_fee', 'total', 'date']
 
 
-class CartOrderItemsAdmin(ImportExportModelAdmin):
+class OrderItemsAdmin(ImportExportModelAdmin):
     # list_filter = ['delivery_couriers', 'applied_coupon']
     list_editable = ['date']
-    list_display = ['order_id', 'vendor', 'food_item' ,'qty', 'price', 'sub_total', 'service_fee', 'total' , 'date']
+    list_display = ['order_id', 'vendor', 'food_item' ,'quantity', 'price', 'sub_total', 'service_fee', 'total' , 'date']
 
 
 
@@ -49,6 +48,7 @@ class CartOrderItemsAdmin(ImportExportModelAdmin):
 # admin.site.register(OrderItem, OrderItemsAdmin)
 admin.site.register(Order, OrderAdmin)
 admin.site.register(Cart, CartAdmin)
+admin.site.register(OrderItem, OrderItemsAdmin)
 admin.site.register(Vendor)
 admin.site.register(FoodItem, FoodItemAdmin)
 # class OrderItemAdmin(ImportExportModelAdmin):

@@ -2,11 +2,13 @@ from django.urls import path
 from userauths import views as userauths_views
 from core import views as core_views
 from rest_framework_simplejwt.views import TokenRefreshView
+from customer import views as customer_views
 
 urlpatterns = [
     path('user/token/', userauths_views.MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('user/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('user/register/', userauths_views.RegisterView.as_view(), name='register'),
+    path('user/profile/<user_id>/', userauths_views.ProfileView.as_view(), name='user_profile'),
     
     # Store API Endpoints
     path('category/', core_views.CategoryListView.as_view(), name='category'),
@@ -27,5 +29,8 @@ urlpatterns = [
     path('vendor-list/', core_views.VendorListView.as_view(), name='vendor-list'),
     path('vendor-detail/<int:vendor_id>/', core_views.VendorDetailView.as_view(), name='vendor-detail'),
     # path('checkout/<order_oid>/', core_views.CheckoutView.as_view(), name='checkout'),
-
+    
+    # Customer API Endpoints
+    path('customer/orders/<user_id>/', customer_views.OrdersAPIView.as_view(), name='customer-orders'),
+    path('customer/order/detail/<user_id>/<order_oid>/', customer_views.OrdersDetailAPIView.as_view(), name='customer-order-detail'),
 ]
