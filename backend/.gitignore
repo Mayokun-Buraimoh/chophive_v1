@@ -14,6 +14,23 @@ venv/
 
 # Database
 *.sqlite3
+db.sqlite3
 
 # Mac system files
 .DS_Store
+
+# Django
+# Python
+__pycache__/
+*.pyc
+
+# Django
+db.sqlite3
+media/
+
+# Environment
+
+
+# Node
+
+

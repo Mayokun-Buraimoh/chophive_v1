@@ -9,20 +9,26 @@ urlpatterns = [
     path('user/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('user/register/', userauths_views.RegisterView.as_view(), name='register'),
     path('user/profile/<user_id>/', userauths_views.ProfileView.as_view(), name='user_profile'),
-    
+    path('user/password-reset/<email>/', userauths_views.PasswordEmailVerify.as_view(), name='password_reset'),
+    path('user/password-change/', userauths_views.PasswordChangeView.as_view(), name='password_reset'),
+
+     
     # Store API Endpoints
     path('category/', core_views.CategoryListView.as_view(), name='category'),
     path('food-items/', core_views.FoodItemListView.as_view(), name='food-items'),
     path('food-item/<str:item_id>/', core_views.FoodItemDetailView.as_view(), name='food-item-detail'),
     path('cart-view/', core_views.CartAPIView.as_view(), name='cart-view'),
     path('cart-list/', core_views.CartListView.as_view(), name='cart-list'),
+    path('cart-list/<str:cart_id>/', core_views.CartListView.as_view(), name='cart-list'),
     path('cart-list/<str:cart_id>/<int:user_id>/', core_views.CartListView.as_view(), name='cart-list-with-user'),
+    
     # path('cart-list/<str:cart_id>/', core_views.CartItemListAPIView.as_view(), name='cart-list'),
     # path('cart-list/<str:cart_id>/<int:user_id>/', core_views.CartListView.as_view(), name='cart-list-with-user'),
     path('cart-detail/<str:cart_id>/', core_views.CartDetailView.as_view(), name='cart-detail'),
     path('cart-detail/<str:cart_id>/<int:user_id>/', core_views.CartDetailView.as_view(), name='cart-detail'),
     path('cart-delete/<str:cart_id>/<str:item_id>/', core_views.CartItemDeleteAPIView.as_view(), name='cart-delete'),
     path('cart-delete/<str:cart_id>/<str:item_id>/<int:user_id>/', core_views.CartItemDeleteAPIView.as_view(), name='cart-delete'),
+    path('get-cart_id/<int:user_id>/', core_views.GetCartIDAPIView.as_view(), name='get-cart-id'),
     path('create-order/', core_views.CreateOrderAPIView.as_view(), name='create-order-with-user'),
     path('checkout/<order_oid>/', core_views.CheckoutView.as_view(), name='checkout'),
 
