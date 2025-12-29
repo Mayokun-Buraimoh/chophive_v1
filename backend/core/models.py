@@ -176,36 +176,36 @@ class Cart(models.Model):
         return sum(item.quantity for item in self.items.all())
 
 
-# class CartItem(models.Model):
-#     """
-#     Individual items in a shopping cart.
-#     """
-#     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='cart_items', help_text="Cart item user")
-#     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name='cart_items', help_text="Cart item vendor")
+class CartItem(models.Model):
+    """
+    Individual items in a shopping cart.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='cart_items', help_text="Cart item user")
+    vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name='cart_items', help_text="Cart item vendor")
     
-#     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items', help_text="Parent cart")
-#     food_item = models.ForeignKey(FoodItem, on_delete=models.CASCADE, related_name='cart_items', help_text="Food item in cart")
-#     quantity = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)], help_text="Quantity of this item")
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items', help_text="Parent cart")
+    food_item = models.ForeignKey(FoodItem, on_delete=models.CASCADE, related_name='cart_items', help_text="Food item in cart")
+    quantity = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)], help_text="Quantity of this item")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
-#     class Meta:
-#         verbose_name = "Cart Item"
-#         verbose_name_plural = "Cart Items"
-#         unique_together = ['cart', 'food_item']  # One cart item entry per food item per cart
+    class Meta:
+        verbose_name = "Cart Item"
+        verbose_name_plural = "Cart Items"
+        unique_together = ['cart', 'food_item']  # One cart item entry per food item per cart
     
-#     def __str__(self):
-#         return f"{self.quantity}x {self.food_item.name} in {self.cart.user.username}'s cart"
+    def __str__(self):
+        return f"{self.quantity}x {self.food_item.name} in {self.cart.user.username}'s cart"
     
-#     @property
-#     def subtotal(self):
-#         """Calculate subtotal for this cart item."""
-#         return self.food_item.price * self.quantity
+    @property
+    def subtotal(self):
+        """Calculate subtotal for this cart item."""
+        return self.food_item.price * self.quantity
     
-#     @property
-#     def price(self):
-#         """Return price per unit (for API consistency)."""
-#         return self.food_item.price
+    @property
+    def price(self):
+        """Return price per unit (for API consistency)."""
+        return self.food_item.price
 
 
 class Order(models.Model):

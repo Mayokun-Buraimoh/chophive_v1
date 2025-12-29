@@ -44,60 +44,130 @@ class FoodItemDetailView(generics.RetrieveAPIView):
     permission_classes = [AllowAny]
     lookup_field = 'item_id'
 
+from decimal import Decimal
+from uuid import uuid4
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import AllowAny
+from rest_framework import generics
+from django.shortcuts import get_object_or_404
+from .models import Cart, CartItem, FoodItem
+from .serializers import CartSerializer
+
 class CartAPIView(generics.ListCreateAPIView):
     """
     List or create cart items.
     Endpoint: GET/POST /api/v1/cart/
     """
-    queryset = Cart.objects.all()
     serializer_class = CartSerializer
     permission_classes = [AllowAny]
-    
+
+    def get_queryset(self):
+        if self.request.user.is_authenticated:
+            return Cart.objects.filter(user=self.request.user)
+        cart_id = self.request.query_params.get("cart_id")
+        if cart_id:
+            return Cart.objects.filter(cart_id=cart_id)
+        return Cart.objects.none()
+
     def create(self, request, *args, **kwargs):
-        payload = request.data
-        
-        item_id = payload['item_id']
-        user_id = payload['user_id']
-        qty = payload['qty']
-        price = payload['price']
-        # delivery_fee = payload['shipping_amount']
-        # service_fee = payload['service_fee']
-        cart_id= payload['cart_id']
-        
-        item = FoodItem.objects.get(id=item_id)
-        if user_id != "undefined":
-            user = User.objects.get(id=user_id)
+        data = request.data
+        user = request.user if request.user.is_authenticated else None
+
+        item_id = data.get("item_id")
+        qty = int(data.get("qty", 1))
+
+        if not item_id:
+            return Response({"error": "item_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        if qty < 1:
+            return Response({"error": "Quantity must be at least 1"}, status=status.HTTP_400_BAD_REQUEST)
+
+        food_item = get_object_or_404(FoodItem, id=item_id)
+
+        # Logged-in user: one cart per user
+        if user:
+            cart, created = Cart.objects.get_or_create(user=user)
         else:
-            user=None
+            # Guest user: use cart_id from frontend or generate new one
+            cart_id = data.get("cart_id") or uuid4().hex[:12]
+            cart, created = Cart.objects.get_or_create(cart_id=cart_id, defaults={"user": None})
+
+        # Check if item already exists in the cart
+        cart_item = CartItem.objects.filter(cart=cart, food_item=food_item).first()
+        if cart_item:
+            cart_item.qty += qty
+            cart_item.price = food_item.price
+            cart_item.sub_total = Decimal(cart_item.qty) * food_item.price
+            cart_item.save()
+            return Response({"message": "Cart item updated", "cart_id": cart.cart_id}, status=status.HTTP_200_OK)
+
+        # Create new cart item
+        CartItem.objects.create(
+            cart=cart,
+            food_item=food_item,
+            qty=qty,
+            price=food_item.price,
+            sub_total=Decimal(qty) * food_item.price
+        )
+
+        return Response({"message": "Item added to cart", "cart_id": cart.cart_id}, status=status.HTTP_201_CREATED)
+
+
+
+# class CartAPIView(generics.ListCreateAPIView):
+    # """
+    # List or create cart items.
+    # Endpoint: GET/POST /api/v1/cart/
+    # """
+    # queryset = Cart.objects.all()
+    # serializer_class = CartSerializer
+    # permission_classes = [AllowAny]
+    
+    # def create(self, request, *args, **kwargs):
+    #     payload = request.data
+        
+    #     item_id = payload['item_id']
+    #     user_id = payload['user_id']
+    #     qty = payload['qty']
+    #     price = payload['price']
+    #     # delivery_fee = payload['shipping_amount']
+    #     # service_fee = payload['service_fee']
+    #     cart_id= payload['cart_id']
+        
+    #     item = FoodItem.objects.get(id=item_id)
+    #     if user_id != "undefined":
+    #         user = User.objects.get(id=user_id)
+    #     else:
+    #         user=None
             
-        cart = Cart.objects.filter(cart_id=cart_id, food_item=item).first()
+    #     cart = Cart.objects.filter(cart_id=cart_id, food_item=item).first()
         
-        if cart:
-            cart.food_item = item
-            cart.user = user
-            cart.qty = qty
-            cart.price = price
-            # cart.sub_total = Decimal(price) * int(qty)
-            # cart.delivery_fee = Decimal(delivery_fee) * int(qty)
-            # cart.service_fee = Decimal(service_fee) 
-            # cart.total_amount = cart.sub_total + cart.delivery_fee + cart.service_fee
-            cart.cart_id = cart_id
-            cart.save()
-            return Response({'message':"Cart updated successfully"}, status=status.HTTP_200_OK)
+    #     if cart:
+    #         cart.food_item = item
+    #         cart.user = user
+    #         cart.qty = qty
+    #         cart.price = price
+    #         # cart.sub_total = Decimal(price) * int(qty)
+    #         # cart.delivery_fee = Decimal(delivery_fee) * int(qty)
+    #         # cart.service_fee = Decimal(service_fee) 
+    #         # cart.total_amount = cart.sub_total + cart.delivery_fee + cart.service_fee
+    #         cart.cart_id = cart_id
+    #         cart.save()
+    #         return Response({'message':"Cart updated successfully"}, status=status.HTTP_200_OK)
         
-        else:
-            cart = Cart() 
-            cart.food_item = item
-            cart.user = user
-            cart.qty = qty
-            cart.price = price 
-            # cart.sub_total = Decimal(price) * int(qty)
-            # cart.delivery_fee = Decimal(delivery_fee) * int(qty)
-            # cart.service_fee = Decimal(service_fee) 
-            cart.cart_id = cart_id
-            cart.total_amount = cart.sub_total + cart.delivery_fee + cart.service_fee
-            cart.save()
-            return Response({'message':"Cart created successfully"}, status=status.HTTP_201_CREATED)
+    #     else:
+    #         cart = Cart() 
+    #         cart.food_item = item
+    #         cart.user = user
+    #         cart.qty = qty
+    #         cart.price = price 
+    #         # cart.sub_total = Decimal(price) * int(qty)
+    #         # cart.delivery_fee = Decimal(delivery_fee) * int(qty)
+    #         # cart.service_fee = Decimal(service_fee) 
+    #         cart.cart_id = cart_id
+    #         cart.total_amount = cart.sub_total + cart.delivery_fee + cart.service_fee
+    #         cart.save()
+    #         return Response({'message':"Cart created successfully"}, status=status.HTTP_201_CREATED)
    
 class CartListView(generics.ListAPIView):
     serializer_class = CartSerializer
@@ -284,7 +354,24 @@ class CartDetailView(generics.RetrieveAPIView):
         # Example: Sum of sub_total, shipping, tax, and service_fee
         return cart_item.total
     
-    
+class GetCartIDAPIView(generics.RetrieveAPIView):
+    """
+    Endpoint to get or create the cart_id for a user.
+    """
+    permission_classes = [AllowAny]
+    serializer_class = CartSerializer
+
+    def get(self, request, user_id=None, *args, **kwargs):
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Get existing cart or create a new one
+        cart, created = Cart.objects.get_or_create(user=user)
+        
+        return Response({"cart_id": cart.cart_id}, status=status.HTTP_200_OK)
+
 class CreateOrderAPIView(generics.CreateAPIView):
     """
     Create an order from cart items.
