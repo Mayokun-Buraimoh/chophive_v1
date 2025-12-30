@@ -6,8 +6,9 @@ from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError, NotFound
+from uuid import uuid4
 
-from core.models import Cart, Category, FoodItem, Order, OrderItem, Vendor
+from core.models import Cart,CartItem, Category, FoodItem, Order, OrderItem, Vendor
 from core.serializers import CartSerializer, CategorySerializer, FoodItemSerializer, OrderSerializer, VendorSerializer
 from userauths.models import User, Profile
 from userauths.serializers import ProfileSerializer
@@ -44,15 +45,7 @@ class FoodItemDetailView(generics.RetrieveAPIView):
     permission_classes = [AllowAny]
     lookup_field = 'item_id'
 
-from decimal import Decimal
-from uuid import uuid4
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import AllowAny
-from rest_framework import generics
-from django.shortcuts import get_object_or_404
-from .models import Cart, CartItem, FoodItem
-from .serializers import CartSerializer
+
 
 class CartAPIView(generics.ListCreateAPIView):
     """
@@ -61,14 +54,14 @@ class CartAPIView(generics.ListCreateAPIView):
     """
     serializer_class = CartSerializer
     permission_classes = [AllowAny]
-
-    def get_queryset(self):
-        if self.request.user.is_authenticated:
-            return Cart.objects.filter(user=self.request.user)
-        cart_id = self.request.query_params.get("cart_id")
-        if cart_id:
-            return Cart.objects.filter(cart_id=cart_id)
-        return Cart.objects.none()
+    queryset = Cart.objects.all()
+    # def get_queryset(self):
+    #     if self.request.user.is_authenticated:
+    #         return Cart.objects.filter(user=self.request.user)
+    #     cart_id = self.request.query_params.get("cart_id")
+    #     if cart_id:
+    #         return Cart.objects.filter(cart_id=cart_id)
+    #     return Cart.objects.none()
 
     def create(self, request, *args, **kwargs):
         data = request.data
