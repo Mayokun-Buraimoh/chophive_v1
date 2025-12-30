@@ -28,6 +28,7 @@ from userauths.serializers import MyTokenObtainPairSerializer, ProfileSerializer
 
 # Models
 from userauths.models import Profile, User
+from core.views import transfer_guest_cart_to_user
 
 
 
@@ -48,10 +49,91 @@ class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
     permission_classes = [AllowAny]
     
+    def post(self, request, *args, **kwargs):
+        """
+        Override post to transfer guest cart after successful login.
+        """
+        response = super().post(request, *args, **kwargs)
+        
+        # If login successful (status 200), transfer guest cart
+        if response.status_code == status.HTTP_200_OK:
+            # Get user from response or request
+            user_data = response.data
+            # Extract user email from token or get user from request
+            try:
+                # Get user from email in request
+                email = request.data.get('email')
+                if email:
+                    user = User.objects.get(email=email)
+                    # Transfer guest cart to database
+                    cart_id = transfer_guest_cart_to_user(request, user)
+                    if cart_id:
+                        # Add cart_id to response
+                        response.data['cart_id'] = cart_id
+            except (User.DoesNotExist, AttributeError):
+                pass  # User not found or already logged in
+        
+        return response
+    
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
+    
+    def create(self, request, *args, **kwargs):
+        """
+        Create user account and transfer guest cart to database.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        
+        # Transfer guest cart to database if exists
+        cart_id = None
+        try:
+            # Check if session is available and has guest cart
+            if hasattr(request, 'session'):
+                # Ensure session is saved/loaded
+                if not request.session.session_key:
+                    request.session.save()
+                
+                print(f"DEBUG REGISTER: Session key: {request.session.session_key}")
+                print(f"DEBUG REGISTER: Session exists: {request.session.exists(request.session.session_key) if request.session.session_key else False}")
+                
+                guest_cart = request.session.get('guest_cart', {})
+                print(f"DEBUG REGISTER: Guest cart from session: {guest_cart}")
+                print(f"DEBUG REGISTER: Guest cart type: {type(guest_cart)}, length: {len(guest_cart) if isinstance(guest_cart, dict) else 'N/A'}")
+                
+                if guest_cart and isinstance(guest_cart, dict) and len(guest_cart) > 0:
+                    print(f"Transferring guest cart with {len(guest_cart)} items for user {user.id}")
+                    cart_id = transfer_guest_cart_to_user(request, user)
+                    print(f"Cart transfer completed. Cart ID: {cart_id}")
+                else:
+                    print("No guest cart found in session or cart is empty")
+            else:
+                print("Session not available in request")
+        except Exception as e:
+            print(f"Error transferring guest cart: {str(e)}")
+            import traceback
+            traceback.print_exc()
+        
+        # Generate tokens for the new user
+        from rest_framework_simplejwt.tokens import RefreshToken
+        refresh = RefreshToken.for_user(user)
+        
+        return Response({
+            "message": "User registered successfully",
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "username": user.username
+            },
+            "tokens": {
+                "refresh": str(refresh),
+                "access": str(refresh.access_token)
+            },
+            "cart_id": cart_id  # Return cart_id if cart was created
+        }, status=status.HTTP_201_CREATED)
 
 class ProfileView(generics.RetrieveAPIView):
     permission_classes = (AllowAny,)

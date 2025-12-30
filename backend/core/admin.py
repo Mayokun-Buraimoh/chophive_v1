@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from core.models import Category, FoodItem, Cart, Vendor, Order, OrderItem
+from core.models import Category, FoodItem, Cart, Vendor, Order, OrderItem, SiteSettings
 
 from import_export.admin import ImportExportModelAdmin
 
@@ -38,6 +38,35 @@ class OrderItemsAdmin(ImportExportModelAdmin):
     list_display = ['order_id', 'vendor', 'food_item' ,'quantity', 'price', 'sub_total', 'service_fee', 'total' , 'date']
 
 
+class SiteSettingsAdmin(admin.ModelAdmin):
+    """
+    Admin interface for Site Settings (singleton model).
+    Only one instance can exist.
+    """
+    def has_add_permission(self, request):
+        # Only allow one instance
+        try:
+            return not SiteSettings.objects.exists()
+        except:
+            # If table doesn't exist yet (during migrations), allow add
+            return True
+    
+    def has_delete_permission(self, request, obj=None):
+        # Prevent deletion of the only instance
+        return False
+    
+    list_display = ['delivery_fee', 'service_fee', 'updated_at']
+    fields = ['delivery_fee', 'service_fee']
+    readonly_fields = ['created_at', 'updated_at']
+    
+    def save_model(self, request, obj, form, change):
+        """
+        Override save to ensure singleton pattern.
+        """
+        obj.pk = 1
+        super().save_model(request, obj, form, change)
+
+
 
 # class OrderItemsAdmin(ImportExportModelAdmin):
     # list_filter = ['delivery_couriers', 'applied_coupon']
@@ -51,6 +80,7 @@ admin.site.register(Cart, CartAdmin)
 admin.site.register(OrderItem, OrderItemsAdmin)
 admin.site.register(Vendor)
 admin.site.register(FoodItem, FoodItemAdmin)
+admin.site.register(SiteSettings, SiteSettingsAdmin)
 # class OrderItemAdmin(ImportExportModelAdmin):
 #     # list_filter = ['delivery_couriers', 'applied_coupon']
 #     list_editable = ['date']

@@ -351,3 +351,46 @@ class OrderItem(models.Model):
 #     def __str__(self):
 #         return f"Payment for Order #{self.order.id} - {self.status}"
 
+
+class SiteSettings(models.Model):
+    """
+    Site-wide settings that can be configured by admin.
+    This is a singleton model - only one instance should exist.
+    """
+    delivery_fee = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        default=500.00,
+        help_text="Default delivery fee in Naira (e.g., 500.00)"
+    )
+    service_fee = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        default=100.00,
+        help_text="Default service fee in Naira (e.g., 100.00)"
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = "Site Settings"
+        verbose_name_plural = "Site Settings"
+    
+    def __str__(self):
+        return f"Site Settings (Delivery: ₦{self.delivery_fee}, Service: ₦{self.service_fee})"
+    
+    def save(self, *args, **kwargs):
+        """
+        Ensure only one instance exists (singleton pattern).
+        """
+        self.pk = 1
+        super().save(*args, **kwargs)
+    
+    @classmethod
+    def get_settings(cls):
+        """
+        Get or create the singleton settings instance.
+        """
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj
+

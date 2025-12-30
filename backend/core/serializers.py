@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from decimal import Decimal
-from core.models import Vendor, FoodItem, Category, Cart, Order, OrderItem
+from core.models import Vendor, FoodItem, Category, Cart, CartItem, Order, OrderItem
 from userauths.serializers import UserSerializer
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -38,6 +38,38 @@ class CartSerializer(serializers.ModelSerializer):
             # For other methods, set serialization depth to 3.
             self.Meta.depth = 3
 
+
+
+class CartItemSerializer(serializers.ModelSerializer):
+    price = serializers.SerializerMethodField()  # <-- explicitly include property
+    subtotal = serializers.SerializerMethodField()
+    sub_total = serializers.SerializerMethodField()  # Alias for frontend compatibility
+    qty = serializers.IntegerField(source='quantity', read_only=True)  # Alias for frontend compatibility
+    food_item_name = serializers.CharField(source='food_item.name', read_only=True)
+    cart_id = serializers.CharField(source='cart.cart_id', read_only=True)  # Include cart_id for delete operations
+
+    class Meta:
+        model = CartItem
+        fields = [
+            'id', 'cart', 'cart_id', 'user', 'vendor',  # Added cart_id
+            'food_item', 'food_item_name',
+            'quantity', 'qty',  # Both quantity and qty for compatibility
+            'price', 'subtotal', 'sub_total',  # Both subtotal and sub_total for compatibility
+            'created_at', 'updated_at'
+        ]
+        depth = 1
+
+    def get_price(self, obj):
+        return str(obj.price)  # This calls the @property on the model
+
+    def get_subtotal(self, obj):
+        return str(obj.subtotal)
+
+    def get_sub_total(self, obj):
+        # Alias for frontend compatibility
+        return str(obj.subtotal)
+
+ 
 class OrderItemSerializer(serializers.ModelSerializer):
     # food_item = FoodItemSerializer(read_only=True)
     
