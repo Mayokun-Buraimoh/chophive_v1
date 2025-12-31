@@ -995,23 +995,17 @@ class CartDetailView(generics.RetrieveAPIView):
     def calculate_delivery_fee(self, cart_item):
         """
         Calculate delivery fee for a cart item.
-        Uses SiteSettings if cart_item.delivery_fee is 0 or not set.
+        Always uses SiteSettings.
         """
         site_settings = SiteSettings.get_settings()
-        # If cart has delivery_fee set, use it; otherwise use site settings
-        if hasattr(cart_item, 'delivery_fee') and cart_item.delivery_fee > 0:
-            return cart_item.delivery_fee
         return site_settings.delivery_fee
 
     def calculate_service_fee(self, cart_item):
         """
         Calculate service fee for a cart item.
-        Uses SiteSettings if cart_item.service_fee is 0 or not set.
+        Always uses SiteSettings.
         """
         site_settings = SiteSettings.get_settings()
-        # If cart has service_fee set, use it; otherwise use site settings
-        if hasattr(cart_item, 'service_fee') and cart_item.service_fee > 0:
-            return cart_item.service_fee
         return site_settings.service_fee
 
     def calculate_sub_total(self, cart_item):
@@ -1069,79 +1063,111 @@ class CreateOrderAPIView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         payload = request.data
 
-        # full_name = payload['full_name']
-        email = payload['email']
-        mobile = payload['mobile']
-        address = payload['address']
-        cart_id = payload['cart_id']
-        user_id = payload['user_id']
+        # Get cart_id and user_id from URL parameters
+        cart_id = self.kwargs.get('cart_id')
+        user_id = self.kwargs.get('user_id')
+        
+        # Get order information from request body
+        delivery_address = payload.get('delivery_address')
+        customer_name = payload.get('customer_name', '')
+        room_address = payload.get('room_address', '')
+        delivery_time = payload.get('delivery_time', '')
+        delivery_batch = payload.get('delivery_batch', '')
+        
+        # Validate required fields
+        if not delivery_address:
+            return Response(
+                {"error": "delivery_address is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate delivery_batch if provided
+        if delivery_batch and delivery_batch not in ['1pm', '6pm']:
+            return Response(
+                {"error": "delivery_batch must be either '1pm' or '6pm'"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not cart_id:
+            return Response(
+                {"error": "cart_id is required in URL"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        print("user_id ===============", user_id)
-
-        if user_id != 0:
-            user = User.objects.filter(id=user_id).first()
+        # Get user
+        if user_id and user_id != 0:
+            try:
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                user = None
         else:
-            user = None
+            user = request.user if request.user.is_authenticated else None
 
-        cart_items = Cart.objects.filter(cart_id=cart_id)
+        # Get cart items - use CartItem instead of Cart
+        try:
+            cart = Cart.objects.get(cart_id=cart_id, user=user) if user else Cart.objects.get(cart_id=cart_id)
+            cart_items = CartItem.objects.filter(cart=cart)
+        except Cart.DoesNotExist:
+            return Response(
+                {"error": "Cart not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        if not cart_items.exists():
+            return Response(
+                {"error": "Cart is empty"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # Get site settings for default fees
         site_settings = SiteSettings.get_settings()
         
-        total_service_fee = Decimal(0.0)
         total_sub_total = Decimal(0.0)
-        total_initial_total = Decimal(0.0)
-        total_total = Decimal(0.0)
-        total_delivery_fee = Decimal(0.0)
 
         with transaction.atomic():
 
             order = Order.objects.create(
-                # sub_total=total_sub_total,
-                # shipping_amount=total_shipping,
-                # tax_fee=total_tax,
-                # service_fee=total_service_fee,
                 buyer=user,
                 payment_status="processing",
-                # full_name=full_name,
-                email=email,
-                mobile=mobile,
-                delivery_address=address,
+                delivery_address=delivery_address,
+                customer_name=customer_name,
+                room_address=room_address,
+                delivery_time=delivery_time,
+                delivery_batch=delivery_batch,
             )
 
-            for c in cart_items:
-                # Use service_fee from cart if set, otherwise use site settings
-                cart_service_fee = c.service_fee if c.service_fee > 0 else site_settings.service_fee
-                # Use delivery_fee from cart if set, otherwise use site settings
-                cart_delivery_fee = c.delivery_fee if c.delivery_fee > 0 else site_settings.delivery_fee
+            # Get delivery_fee and service_fee from SiteSettings (always use site settings)
+            delivery_fee = site_settings.delivery_fee
+            service_fee = site_settings.service_fee
+            
+            for cart_item in cart_items:
+                # Calculate subtotal for this item
+                item_subtotal = cart_item.subtotal  # Uses the property from CartItem model
                 
                 OrderItem.objects.create(
                     order=order,
-                    food_item=c.food_item,
-                    quantity=c.qty,
-                    price=c.price,
-                    sub_total=c.sub_total,
-                    service_fee=cart_service_fee,
-                    total=c.total,
-                    vendor=c.food_item.vendor
+                    food_item=cart_item.food_item,
+                    quantity=cart_item.quantity,
+                    price=cart_item.price,  # Uses the property from CartItem model
+                    sub_total=item_subtotal,
+                    service_fee=Decimal(0),  # Service fee is per order, not per item
+                    total=item_subtotal,  # Item total is just subtotal
+                    vendor=cart_item.vendor
                 )
 
-                total_delivery_fee += Decimal(str(cart_delivery_fee))
-                total_service_fee += Decimal(str(cart_service_fee))
-                total_sub_total += Decimal(c.sub_total)
-                total_initial_total += Decimal(c.total)
-                total_total += Decimal(c.total)
+                total_sub_total += item_subtotal
 
                 # Set vendor on order if not already set
-                if c.food_item.vendor:
-                    order.vendor = c.food_item.vendor
+                if cart_item.vendor and not order.vendor:
+                    order.vendor = cart_item.vendor
 
                 
 
-            order.sub_total=total_sub_total
-            order.service_fee=total_service_fee
-            order.initial_total=total_initial_total
-            order.total=total_total
+            order.sub_total = total_sub_total
+            order.delivery_fee = Decimal(str(delivery_fee))
+            order.service_fee = service_fee
+            order.total = total_sub_total + service_fee + Decimal(str(delivery_fee))
+            order.total_amount = order.total
 
             
             order.save()
@@ -1149,13 +1175,25 @@ class CreateOrderAPIView(generics.CreateAPIView):
         return Response( {"message": "Order Created Successfully", 'order_oid':order.oid}, status=status.HTTP_201_CREATED)
 
 class CheckoutView(generics.RetrieveAPIView):
+    """
+    Retrieve order details for checkout summary.
+    Endpoint: GET /api/v1/checkout/{order_oid}/
+    Returns order details with items and totals for checkout confirmation.
+    """
     serializer_class = OrderSerializer
     lookup_field = 'order_oid'  
+    permission_classes = [AllowAny]
 
     def get_object(self):
-        order_oid = self.kwargs['order_oid']
-        cart = get_object_or_404(Order, oid=order_oid)
-        return cart
+        order_oid = self.kwargs.get('order_oid')
+        if not order_oid:
+            raise NotFound("Order OID is required")
+        
+        try:
+            order = Order.objects.select_related('buyer', 'vendor').prefetch_related('items__food_item', 'items__vendor').get(oid=order_oid)
+            return order
+        except Order.DoesNotExist:
+            raise NotFound(f"Order with OID '{order_oid}' not found")
 
 # class CheckoutView(generics.ListAPIView):
 #     """

@@ -225,20 +225,29 @@ class Order(models.Model):
         ('Failed', 'Failed'),
     ]
     
+    DELIVERY_BATCH_CHOICES = [
+        ('1pm', '1pm'),
+        ('6pm', '6pm'),
+    ]
+    
     buyer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="buyer", blank=True)
     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name='orders', blank=True, null=True, help_text="Primary vendor (nullable for multi-vendor orders)")
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Total order amount")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending', help_text="Order status")
     sub_total = models.DecimalField(default=0.00, max_digits=12, decimal_places=2)
-    service_fee = models.DecimalField(default=0.00, max_digits=12, decimal_places=2)
+    delivery_fee = models.DecimalField(default=0.00, max_digits=12, decimal_places=2, help_text="Delivery fee from SiteSettings")
+    service_fee = models.DecimalField(default=0.00, max_digits=12, decimal_places=2, help_text="Service fee from SiteSettings")
     total = models.DecimalField(default=0.00, max_digits=12, decimal_places=2)
     delivery_address = models.TextField(help_text="Delivery address for this order")
+    customer_name = models.CharField(max_length=200, blank=True, help_text="Customer name for the order")
+    room_address = models.CharField(max_length=200, blank=True, help_text="Room number or room address")
+    delivery_time = models.CharField(max_length=100, blank=True, help_text="Preferred delivery time")
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='Pending', help_text="Payment status")
     payment_id = models.CharField(max_length=200, blank=True, help_text="Stripe transaction ID or payment reference")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     date = models.DateField(auto_now_add=True)
-    delivery_batch = models.CharField(max_length=200, blank=True, help_text="Delivery batch")
+    delivery_batch = models.CharField(max_length=10, choices=DELIVERY_BATCH_CHOICES, blank=True, help_text="Delivery batch (1pm or 6pm)")
     order_pin = models.IntegerField(blank=True, null=True, help_text="Order pin (4 digits)", unique=True)
     approved = models.BooleanField(default=False, help_text="Whether the order has been approved")
     oid = ShortUUIDField(length=10, max_length=25, alphabet="abcdefghijklmnopqrstuvxyz")
