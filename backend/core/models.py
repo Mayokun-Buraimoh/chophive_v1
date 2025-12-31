@@ -3,6 +3,7 @@ from uuid import uuid4
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils.text import slugify
+from django.utils.safestring import mark_safe
 from userauths.models import User
 from shortuuid.django_fields import ShortUUIDField
 from django.utils import timezone
@@ -308,21 +309,34 @@ class OrderItem(models.Model):
         verbose_name_plural = "Order Items"
     
     def order_img(self):
-        return mark_safe('<img src="%s" width="50" height="50" style="object-fit:cover; border-radius: 6px;" />' % (self.product.image.url))
+        """Return HTML img tag for food item image (for admin display)."""
+        try:
+            if self.food_item and hasattr(self.food_item, 'image') and self.food_item.image:
+                return mark_safe(f'<img src="{self.food_item.image.url}" width="50" height="50" style="object-fit:cover; border-radius: 6px;" />')
+        except (AttributeError, ValueError):
+            pass
+        return "-"
    
     # Method to return a formatted order ID
     def order_id(self):
-        return f"Order ID #{self.order.oid}"
-    
-    # Method to return a string representation of the object
-    def __str__(self):
-        return self.oid
+        """Return a formatted order ID string."""
+        try:
+            if self.order and hasattr(self.order, 'oid'):
+                return f"Order ID #{self.order.oid}"
+            elif self.order:
+                return f"Order ID #{self.order.id}"
+        except (AttributeError, TypeError):
+            pass
+        return "Order ID #Unknown"
 
     def __str__(self):
         """Return string representation of order item."""
-        food_name = self.food_item.name if self.food_item else "Unknown Item"
-        order_id = self.order.id if self.order else "Unknown"
-        return f"{self.quantity}x {food_name} in Order #{order_id}"
+        try:
+            food_name = self.food_item.name if self.food_item else "Unknown Item"
+            order_id = self.order.id if self.order else "Unknown"
+            return f"{self.quantity}x {food_name} in Order #{order_id}"
+        except (AttributeError, TypeError):
+            return f"OrderItem #{self.id}"
     
     @property
     def subtotal(self):

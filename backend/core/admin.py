@@ -26,7 +26,7 @@ class OrderAdmin(ImportExportModelAdmin):
     search_fields = ['oid', 'customer_name', 'room_address', 'delivery_address']
     list_editable = ['payment_status']
     list_filter = ['payment_status', 'status']
-    list_display = ['oid', 'customer_name', 'room_address', 'delivery_batch', 'delivery_time', 'payment_status', 'sub_total', 'delivery_fee', 'service_fee', 'total', 'date']
+    list_display = ['oid', 'customer_name', 'room_address', 'delivery_batch', 'delivery_time', 'payment_status', 'sub_total', 'service_fee', 'total', 'date']
     list_filter = ['payment_status', 'status', 'delivery_batch']
 
 class CartAdmin(ImportExportModelAdmin):
