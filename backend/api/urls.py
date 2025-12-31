@@ -30,7 +30,7 @@ urlpatterns = [
     path('cart-delete/<str:cart_id>/<int:cart_item_id>/', core_views.CartItemDeleteAPIView.as_view(), name='cart-delete'),
     path('cart-delete/<str:cart_id>/<int:cart_item_id>/<int:user_id>/', core_views.CartItemDeleteAPIView.as_view(), name='cart-delete-with-user'),
     path('get-cart_id/<int:user_id>/', core_views.GetCartIDAPIView.as_view(), name='get-cart-id'),
-    path('create-order/', core_views.CreateOrderAPIView.as_view(), name='create-order-with-user'),
+    path('create-order/<str:cart_id>/<int:user_id>/', core_views.CreateOrderAPIView.as_view(), name='create-order'),
     path('checkout/<order_oid>/', core_views.CheckoutView.as_view(), name='checkout'),
 
     path('vendor-list/', core_views.VendorListView.as_view(), name='vendor-list'),
