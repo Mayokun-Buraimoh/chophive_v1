@@ -344,8 +344,8 @@ class CartAPIView(generics.ListCreateAPIView):
                 message = "New item added to guest cart"
             
             # Save the updated cart back to session (important: reassign to trigger save)
-            request.session['guest_cart'] = guest_cart
-            request.session.modified = True
+                request.session['guest_cart'] = guest_cart
+                request.session.modified = True
             
             # Verify the cart was saved (for debugging)
             saved_cart = request.session.get('guest_cart', {})
@@ -1128,7 +1128,7 @@ class CreateOrderAPIView(generics.CreateAPIView):
 
             order = Order.objects.create(
                 buyer=user,
-                payment_status="processing",
+                payment_status="Processing",
                 delivery_address=delivery_address,
                 customer_name=customer_name,
                 room_address=room_address,
