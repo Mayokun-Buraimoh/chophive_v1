@@ -9,10 +9,13 @@ https://docs.djangoproject.com/en/6.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
-
+import os
 from datetime import timedelta
 from pathlib import Path
+from environs import Env
 
+env = Env()
+env.read_env()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -53,6 +56,7 @@ INSTALLED_APPS = [
     'userauths',
     'customer',
     'import_export', 
+    # 'anymail',
 
 ]
 
@@ -155,6 +159,16 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
+
+# ANYMAIL = {
+#     "MAILERSEND_API_TOKEN": env("MAILER_SEND_API_TOKEN"),
+# }
+
+FROM_EMAIL = "chophive01@gmail.com"
+# EMAIL_BACKEND = "anymail.backends.mailersend.EmailBackend"
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = "chophive01@gmail.com"
+SERVER_EMAIL = "chophive01@gmail.com"
 
 
 # drf-spectacular Settings

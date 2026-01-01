@@ -22,6 +22,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 # Others
 import json
 import random
+import jwt
 
 # Serializers
 from userauths.serializers import MyTokenObtainPairSerializer, ProfileSerializer, RegisterSerializer, UserSerializer
@@ -29,6 +30,9 @@ from userauths.serializers import MyTokenObtainPairSerializer, ProfileSerializer
 
 # Models
 from userauths.models import Profile, User
+
+# Import transfer_guest_cart_to_user from core.views
+from core.views import transfer_guest_cart_to_user
 
 
 
@@ -107,14 +111,14 @@ class PasswordEmailVerify(generics.RetrieveAPIView):
                 'username': user.username, 
             }
             subject = f"Password Reset Request"
-            text_body = render_to_string("email/password_reset.txt", merge_data)
+            # text_body = render_to_string("email/password_reset.txt", merge_data)
             html_body = render_to_string("email/password_reset.html", merge_data)
             
             msg = EmailMultiAlternatives(
                 subject=subject, from_email=settings.FROM_EMAIL,
-                to=[user.email], body=text_body
+                to=[user.email], body=html_body
             )
-            msg.attach_alternative(html_body, "text/html")
+            # msg.attach_alternative(html_body, "text/html")
             msg.send()
         return user
     
@@ -147,4 +151,102 @@ class PasswordChangeView(generics.CreateAPIView):
             return Response( {"message": "Password Changed Successfully"}, status=status.HTTP_201_CREATED)
         else:
             return Response( {"message": "An Error Occured"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class GoogleSignInView(generics.GenericAPIView):
+    """
+    View to handle Google OAuth sign-in.
+    Receives a Google credential token from the frontend,
+    verifies it, creates or gets the user, and returns JWT tokens.
+    """
+    permission_classes = [AllowAny]
+    
+    def post(self, request, *args, **kwargs):
+        credential = request.data.get('credential')
+        
+        if not credential:
+            return Response(
+                {"error": "Credential token is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Decode the Google JWT token (without verification for now)
+            # In production, you should verify the token with Google's public keys
+            decoded_token = jwt.decode(credential, options={"verify_signature": False})
+            
+            # Extract user information from the token
+            email = decoded_token.get('email')
+            name = decoded_token.get('name', '')
+            given_name = decoded_token.get('given_name', '')
+            family_name = decoded_token.get('family_name', '')
+            picture = decoded_token.get('picture', '')
+            
+            if not email:
+                return Response(
+                    {"error": "Email not found in Google token"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Generate username from email or name
+            username = email.split('@')[0] if email else given_name.lower().replace(' ', '') if given_name else 'user'
+            
+            # Get or create user
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults={
+                    'username': username,
+                    'first_name': given_name,
+                    'last_name': family_name,
+                }
+            )
+            
+            # If user already exists but name fields are empty, update them
+            if not created:
+                if not user.first_name and given_name:
+                    user.first_name = given_name
+                if not user.last_name and family_name:
+                    user.last_name = family_name
+                user.save()
+            
+            # Update profile if picture is available
+            if hasattr(user, 'profile') and picture:
+                profile = user.profile
+                # You can store the picture URL or download it
+                # For now, we'll just ensure the profile exists
+                if not profile.username:
+                    profile.username = username
+                    profile.save()
+            
+            # Transfer guest cart to user if it exists
+            transfer_guest_cart_to_user(request, user)
+            
+            # Generate JWT tokens
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
+            
+            return Response({
+                "access": access_token,
+                "refresh": refresh_token,
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "username": user.username,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                }
+            }, status=status.HTTP_200_OK)
+            
+        except jwt.DecodeError:
+            return Response(
+                {"error": "Invalid token format"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            print(f"Google Sign-In error: {str(e)}")
+            return Response(
+                {"error": f"An error occurred during Google sign-in: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 

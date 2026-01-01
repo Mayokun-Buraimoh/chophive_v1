@@ -8,7 +8,7 @@ from django.db.models.signals import post_save
 
 class User(AbstractUser):
     email = models.EmailField(unique=True)
-    username = models.CharField(max_length=255, unique=True)
+    username = models.CharField(max_length=255)
     otp = models.CharField(max_length=6, null=True, blank=True)
     
     USERNAME_FIELD = 'email'
