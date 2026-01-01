@@ -28,6 +28,7 @@ urlpatterns = [
     path('cart-detail/<str:cart_id>/', core_views.CartDetailView.as_view(), name='cart-detail'),
     path('cart-detail/<str:cart_id>/<int:user_id>/', core_views.CartDetailView.as_view(), name='cart-detail'),
     path('cart-item-update/<int:id>/', core_views.CartItemUpdateAPIView.as_view(), name='cart-item-update'),
+    path('cart/delete/<str:cart_id>/', core_views.CartDeleteAPIView.as_view(), name='cart-delete'),
     path('cart-delete/<str:cart_id>/<int:cart_item_id>/', core_views.CartItemDeleteAPIView.as_view(), name='cart-delete'),
     path('cart-delete/<str:cart_id>/<int:cart_item_id>/<int:user_id>/', core_views.CartItemDeleteAPIView.as_view(), name='cart-delete-with-user'),
     path('get-cart_id/<int:user_id>/', core_views.GetCartIDAPIView.as_view(), name='get-cart-id'),
