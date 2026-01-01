@@ -834,7 +834,17 @@ class CartItemUpdateAPIView(generics.UpdateAPIView):
             "quantity": cart_item.quantity
         }, status=status.HTTP_200_OK)
 
+class CartDeleteAPIView(generics.DestroyAPIView):
+    serializer_class = CartSerializer
+    permission_classes = [AllowAny]
+    lookup_field = 'cart_id'
+    queryset = Cart.objects.all()
 
+    def destroy(self, request, *args, **kwargs):
+        cart = get_object_or_404(Cart, cart_id=kwargs['cart_id'])
+        cart.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+        
 class CartItemDeleteAPIView(generics.GenericAPIView):
     """
     Delete a cart item (works for both authenticated and guest users).
