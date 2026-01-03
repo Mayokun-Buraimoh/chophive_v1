@@ -16,6 +16,8 @@ from environs import Env
 
 env = Env()
 env.read_env()
+
+BREVO_API_KEY = env("BREVO_API_KEY") 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -161,14 +163,14 @@ REST_FRAMEWORK = {
 }
 
 ANYMAIL = {
-    "MAILERSEND_API_TOKEN": env("MAILER_SEND_API_TOKEN"),
+    "BREVO_API_KEY": env("BREVO_API_KEY"),
 }
 
-FROM_EMAIL = "no-reply@chophive.com"
-EMAIL_BACKEND = "anymail.backends.mailersend.EmailBackend"
+FROM_EMAIL = "ChopHive <no-reply@chophive.com>"
+EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
 # EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = "no-reply@chophive.com"
-SERVER_EMAIL = "no-reply@chophive.com"
+DEFAULT_FROM_EMAIL = "ChopHive <no-reply@chophive.com>"
+SERVER_EMAIL = "ChopHive <no-reply@chophive.com>"
 
 
 # drf-spectacular Settings

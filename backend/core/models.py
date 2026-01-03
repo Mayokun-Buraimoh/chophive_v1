@@ -152,8 +152,8 @@ class Cart(models.Model):
         verbose_name = "Cart"
         verbose_name_plural = "Carts"
     
-    def __str__(self):
-        return f'{self.cart_id} - {self.food_item.name}'
+    # def __str__(self):
+    #     return f'{self.cart_id} - {self.food_item.name}'
 
     def save(self, *args, **kwargs):
         """Auto-generate a unique cart_id if missing."""
