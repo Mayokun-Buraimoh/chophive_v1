@@ -2,11 +2,14 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.core.mail import EmailMultiAlternatives
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
 from django.template.loader import render_to_string
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
+from rest_framework.exceptions import NotFound
 from django.shortcuts import get_object_or_404
 import jwt
 # Restframework
@@ -79,74 +82,169 @@ def generate_numeric_otp(length=7):
         # Generate a random 7-digit OTP
         otp = ''.join([str(random.randint(0, 9)) for _ in range(length)])
         return otp
-        
+
 class PasswordEmailVerify(generics.RetrieveAPIView):
     permission_classes = (AllowAny,)
     serializer_class = UserSerializer
-    
+
     def get_object(self):
-        email = self.kwargs['email']
-        user = User.objects.get(email=email)
-        
-        if user:
-            user.otp = generate_numeric_otp()
-            uidb64 = user.pk
-            
-             # Generate a token and include it in the reset link sent via email
-            refresh = RefreshToken.for_user(user)
-            reset_token = str(refresh.access_token)
+        email = self.kwargs.get("email")
 
-            # Store the reset_token in the user model for later verification
-            user.reset_token = reset_token
-            user.save()
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise NotFound("User with this email does not exist")
 
-            link = f"http://localhost:5173/create-new-password?otp={user.otp}&uidb64={uidb64}&reset_token={reset_token}"
-            
-            merge_data = {
-                'link': link, 
-                'username': user.username, 
-            }
-            subject = f"Password Reset Request"
-            # text_body = render_to_string("email/password_reset.txt", merge_data)
-            html_body = render_to_string("email/password_reset.html", merge_data)
-            
-            msg = EmailMultiAlternatives(
-                subject=subject, from_email=settings.FROM_EMAIL,
-                to=[user.email], body=html_body
-            )
-            # msg.attach_alternative(html_body, "text/html")
-            msg.send()
+        # 1️⃣ Generate OTP
+        user.otp = generate_numeric_otp()
+
+        # 2️⃣ Encode user ID properly
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+
+        # 3️⃣ Generate short-lived JWT reset token
+        refresh = RefreshToken.for_user(user)
+        reset_token = str(refresh.access_token)
+
+        # 4️⃣ Save OTP + reset token
+        user.reset_token = reset_token
+        user.save()
+
+        # 5️⃣ Build reset link
+        link = (
+            f"http://localhost:5173/create-new-password"
+            f"?otp={user.otp}&uidb64={uidb64}&reset_token={reset_token}"
+        )
+
+        # 6️⃣ Email context
+        context = {
+            "link": link,
+            "username": user.username,
+        }
+
+        subject = "Password Reset Request"
+        html_body = render_to_string("email/password_reset.html", context)
+
+        msg = EmailMultiAlternatives(
+            subject=subject,
+            from_email=settings.FROM_EMAIL,
+            to=[user.email],
+        )
+        msg.attach_alternative(html_body, "text/html")
+        msg.send()
+
         return user
-    
 
+# class PasswordEmailVerify(generics.RetrieveAPIView):
+#     permission_classes = (AllowAny,)
+#     serializer_class = UserSerializer
+    
+#     def get_object(self):
+#         email = self.kwargs['email']
+#         user = User.objects.get(email=email)
+        
+#         if user:
+#             user.otp = generate_numeric_otp()
+#             uidb64 = user.pk
+            
+#              # Generate a token and include it in the reset link sent via email
+#             refresh = RefreshToken.for_user(user)
+#             reset_token = str(refresh.access_token)
+
+#             # Store the reset_token in the user model for later verification
+#             user.reset_token = reset_token
+#             user.save()
+
+#             link = f"http://localhost:5173/create-new-password?otp={user.otp}&uidb64={uidb64}&reset_token={reset_token}"
+            
+#             merge_data = {
+#                 'link': link, 
+#                 'username': user.username, 
+#             }
+#             subject = f"Password Reset Request"
+#             # text_body = render_to_string("email/password_reset.txt", merge_data)
+#             html_body = render_to_string("email/password_reset.html", merge_data)
+            
+#             msg = EmailMultiAlternatives(
+#                 subject=subject, from_email=settings.FROM_EMAIL,
+#                 to=[user.email], body=html_body
+#             )
+#             # msg.attach_alternative(html_body, "text/html")
+#             msg.send()
+#         return user
+    
 class PasswordChangeView(generics.CreateAPIView):
     permission_classes = (AllowAny,)
     serializer_class = UserSerializer
-    
+
     def create(self, request, *args, **kwargs):
         payload = request.data
+
+        otp = payload.get('otp')
+        uidb64 = payload.get('uidb64')
+        reset_token = payload.get('reset_token')
+        password = payload.get('password')
+
+        if not all([otp, uidb64, reset_token, password]):
+            return Response(
+                {"message": "All fields are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # ✅ Decode uidb64 → integer user ID
+        try:
+            user_id = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(
+                id=user_id,
+                otp=otp,
+                reset_token=reset_token
+            )
+        except (User.DoesNotExist, ValueError, TypeError):
+            return Response(
+                {"message": "Invalid reset link"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # ✅ Set new password
+        user.set_password(password)
+
+        # ✅ Invalidate OTP & token
+        user.otp = None
+        user.reset_token = None
+        user.save()
+
+        return Response(
+            {"message": "Password changed successfully"},
+            status=status.HTTP_200_OK
+        )
+
+# class PasswordChangeView(generics.CreateAPIView):
+#     permission_classes = (AllowAny,)
+#     serializer_class = UserSerializer
+    
+#     def create(self, request, *args, **kwargs):
+#         payload = request.data
         
-        otp = payload['otp']
-        uidb64 = payload['uidb64']
-        reset_token = payload['reset_token']
-        password = payload['password']
+#         otp = payload['otp']
+#         uidb64 = payload['uidb64']
+#         reset_token = payload['reset_token']
+#         password = payload['password']
 
-        print("otp ======", otp)
-        print("uidb64 ======", uidb64)
-        print("reset_token ======", reset_token)
-        print("password ======", password)
+#         print("otp ======", otp)
+#         print("uidb64 ======", uidb64)
+#         print("reset_token ======", reset_token)
+#         print("password ======", password)
 
-        user = User.objects.get(id=uidb64, otp=otp)
-        if user:
-            user.set_password(password)
-            user.otp = ""
-            user.reset_token = ""
-            user.save()
+#         user = User.objects.get(id=uidb64, otp=otp)
+#         if user:
+#             user.set_password(password)
+#             user.otp = ""
+#             user.reset_token = ""
+#             user.save()
 
             
-            return Response( {"message": "Password Changed Successfully"}, status=status.HTTP_201_CREATED)
-        else:
-            return Response( {"message": "An Error Occured"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#             return Response( {"message": "Password Changed Successfully"}, status=status.HTTP_201_CREATED)
+#         else:
+#             return Response( {"message": "An Error Occured"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class GoogleSignInView(generics.GenericAPIView):
