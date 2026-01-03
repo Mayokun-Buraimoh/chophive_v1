@@ -9,6 +9,7 @@ from django.db.models.signals import post_save
 class User(AbstractUser):
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=255)
+    is_email_verified = models.BooleanField(default=False)
     otp = models.CharField(max_length=6, null=True, blank=True)
     reset_token = models.TextField(blank=True, null=True)
 

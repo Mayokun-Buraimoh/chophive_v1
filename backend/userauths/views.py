@@ -21,14 +21,21 @@ from rest_framework import generics
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import AccessToken
+from django.contrib.auth import get_user_model
+from rest_framework.views import APIView
+from sib_api_v3_sdk import ApiClient, Configuration, TransactionalEmailsApi, SendSmtpEmail
 
 # Others
+
 import json
 import random
+
 
 # Serializers
 from userauths.serializers import MyTokenObtainPairSerializer, ProfileSerializer, RegisterSerializer, UserSerializer
 
+User = get_user_model()
 
 # Models
 from userauths.models import Profile, User
@@ -57,6 +64,31 @@ class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
 
+    def get_serializer_context(self):
+        return {"request": self.request}
+
+class VerifyEmailView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        token = request.query_params.get("token")
+
+        if not token:
+            return Response({"error": "Token missing"}, status=400)
+
+        try:
+            access_token = AccessToken(token)
+            user_id = access_token["user_id"]
+
+            user = User.objects.get(id=user_id)
+            user.is_active = True
+            user.is_email_verified = True
+            user.save()
+
+            return Response({"message": "Email verified successfully"}, status=200)
+
+        except Exception:
+            return Response({"error": "Invalid or expired token"}, status=400)
 
 class ProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = ProfileSerializer
@@ -124,15 +156,37 @@ class PasswordEmailVerify(generics.RetrieveAPIView):
         subject = "Password Reset Request"
         html_body = render_to_string("email/password_reset.html", context)
 
-        msg = EmailMultiAlternatives(
+        # 7️⃣ Configure Brevo SDK correctly (no 'with')
+        configuration = Configuration()
+        configuration.api_key["api-key"] = settings.BREVO_API_KEY
+
+        api_client = ApiClient(configuration)
+        email_api = TransactionalEmailsApi(api_client)
+
+        send_email = SendSmtpEmail(
+            sender={"name": "ChopHive", "email": "no-reply@chophive.com"},
+            to=[{"email": user.email, "name": user.username}],
             subject=subject,
-            from_email=settings.FROM_EMAIL,
-            to=[user.email],
+            html_content=html_body,
         )
-        msg.attach_alternative(html_body, "text/html")
-        msg.send()
+
+        try:
+            response = email_api.send_transac_email(send_email)
+            print("Brevo sent:", response)
+        except Exception as e:
+            print("Brevo error:", e)
 
         return user
+        
+        # msg = EmailMultiAlternatives(
+        #     subject=subject,
+        #     from_email=settings.FROM_EMAIL,
+        #     to=[user.email],
+        # )
+        # msg.attach_alternative(html_body, "text/html")
+        # msg.send()
+
+        
 
 # class PasswordEmailVerify(generics.RetrieveAPIView):
 #     permission_classes = (AllowAny,)

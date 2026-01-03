@@ -12,7 +12,7 @@ urlpatterns = [
     path('user/profile/<user_id>/', userauths_views.ProfileView.as_view(), name='user_profile'),
     path('user/password-reset/<email>/', userauths_views.PasswordEmailVerify.as_view(), name='password_reset'),
     path('user/password-change/', userauths_views.PasswordChangeView.as_view(), name='password_reset'),
-
+    path("verify-email/", userauths_views.VerifyEmailView.as_view()),
      
     # Store API Endpoints
     path('category/', core_views.CategoryListView.as_view(), name='category'),
