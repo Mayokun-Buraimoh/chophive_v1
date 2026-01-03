@@ -1059,12 +1059,12 @@ class CreateOrderAPIView(generics.CreateAPIView):
     
     Requires:
     - cart_id in URL path
-    - delivery_address in request body
+    - hostel in request body (must be one of: Daniel Hall, Peter Hall, Mary Hall, Johnson Hall)
     - Either JWT token OR user_id in URL
     
     Example:
     POST /api/v1/create-order/abc123/1/
-    Body: {"delivery_address": "123 Main St"}
+    Body: {"hostel": "Daniel Hall"}
     """
     serializer_class = OrderSerializer
     queryset = Order.objects.all()
@@ -1078,18 +1078,26 @@ class CreateOrderAPIView(generics.CreateAPIView):
         user_id = self.kwargs.get('user_id')
         
         # Get order information from request body
-        delivery_address = payload.get('delivery_address')
+        hostel = payload.get('hostel')
         customer_name = payload.get('customer_name', '')
         room_address = payload.get('room_address', '')
-        delivery_time = payload.get('delivery_time', '')
         delivery_batch = payload.get('delivery_batch', '')
         
         # Validate required fields
-        if not delivery_address:
+        if not hostel:
             return Response(
-                {"error": "delivery_address is required"},
+                {"error": "hostel is required"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        # Validate hostel is one of the allowed choices
+        # from core.models import HOSTEL_CHOICES
+        # valid_hostels = [choice[0] for choice in HOSTEL_CHOICES]
+        # if hostel not in valid_hostels:
+        #     return Response(
+        #         {"error": f"hostel must be one of: {', '.join(valid_hostels)}"},
+        #         status=status.HTTP_400_BAD_REQUEST
+        #     )
         
         # Validate delivery_batch if provided
         if delivery_batch and delivery_batch not in ['1pm', '6pm']:
@@ -1139,10 +1147,9 @@ class CreateOrderAPIView(generics.CreateAPIView):
             order = Order.objects.create(
                 buyer=user,
                 payment_status="Processing",
-                delivery_address=delivery_address,
+                hostel=hostel,
                 customer_name=customer_name,
                 room_address=room_address,
-                delivery_time=delivery_time,
                 delivery_batch=delivery_batch,
             )
 

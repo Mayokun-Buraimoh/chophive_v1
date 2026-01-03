@@ -8,7 +8,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.shortcuts import get_object_or_404
-
+import jwt
 # Restframework
 from rest_framework import status
 from rest_framework.decorators import api_view
@@ -22,7 +22,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 # Others
 import json
 import random
-import jwt
 
 # Serializers
 from userauths.serializers import MyTokenObtainPairSerializer, ProfileSerializer, RegisterSerializer, UserSerializer
@@ -30,9 +29,6 @@ from userauths.serializers import MyTokenObtainPairSerializer, ProfileSerializer
 
 # Models
 from userauths.models import Profile, User
-
-# Import transfer_guest_cart_to_user from core.views
-from core.views import transfer_guest_cart_to_user
 
 
 
@@ -219,7 +215,7 @@ class GoogleSignInView(generics.GenericAPIView):
                     profile.save()
             
             # Transfer guest cart to user if it exists
-            transfer_guest_cart_to_user(request, user)
+            # transfer_guest_cart_to_user(request, user)
             
             # Generate JWT tokens
             refresh = RefreshToken.for_user(user)

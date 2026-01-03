@@ -56,7 +56,7 @@ INSTALLED_APPS = [
     'userauths',
     'customer',
     'import_export', 
-    # 'anymail',
+    'anymail',
 
 ]
 
@@ -160,15 +160,15 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
-# ANYMAIL = {
-#     "MAILERSEND_API_TOKEN": env("MAILER_SEND_API_TOKEN"),
-# }
+ANYMAIL = {
+    "MAILERSEND_API_TOKEN": env("MAILER_SEND_API_TOKEN"),
+}
 
-FROM_EMAIL = "chophive01@gmail.com"
-# EMAIL_BACKEND = "anymail.backends.mailersend.EmailBackend"
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = "chophive01@gmail.com"
-SERVER_EMAIL = "chophive01@gmail.com"
+FROM_EMAIL = "no-reply@chophive.com"
+EMAIL_BACKEND = "anymail.backends.mailersend.EmailBackend"
+# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = "no-reply@chophive.com"
+SERVER_EMAIL = "no-reply@chophive.com"
 
 
 # drf-spectacular Settings

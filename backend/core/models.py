@@ -136,7 +136,7 @@ class Cart(models.Model):
     Each user has one active cart.
     """
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cart', help_text="Cart owner")
-    food_item = models.ForeignKey(FoodItem, on_delete=models.CASCADE, related_name='carts', help_text="Food item in cart")
+    food_item = models.ForeignKey(FoodItem, on_delete=models.CASCADE, related_name='carts', help_text="Food item in cart", null=True, blank=True)
     qty = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)], help_text="Quantity of this item")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -185,7 +185,7 @@ class CartItem(models.Model):
     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name='cart_items', help_text="Cart item vendor")
     
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items', help_text="Parent cart")
-    food_item = models.ForeignKey(FoodItem, on_delete=models.CASCADE, related_name='cart_items', help_text="Food item in cart")
+    food_item = models.ForeignKey(FoodItem, on_delete=models.CASCADE, related_name='cart_items', help_text="Food item in cart", null=True, blank=True)
     quantity = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)], help_text="Quantity of this item")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -239,7 +239,7 @@ class Order(models.Model):
     delivery_fee = models.DecimalField(default=0.00, max_digits=12, decimal_places=2, help_text="Delivery fee from SiteSettings")
     service_fee = models.DecimalField(default=0.00, max_digits=12, decimal_places=2, help_text="Service fee from SiteSettings")
     total = models.DecimalField(default=0.00, max_digits=12, decimal_places=2)
-    delivery_address = models.TextField(help_text="Delivery address for this order")
+    hostel = models.TextField(help_text="Delivery address for this order")
     customer_name = models.CharField(max_length=200, blank=True, help_text="Customer name for the order")
     room_address = models.CharField(max_length=200, blank=True, help_text="Room number or room address")
     delivery_time = models.CharField(max_length=100, blank=True, help_text="Preferred delivery time")
@@ -311,7 +311,7 @@ class OrderItem(models.Model):
     def order_img(self):
         """Return HTML img tag for food item image (for admin display)."""
         try:
-            if self.food_item and hasattr(self.food_item, 'image') and self.food_item.image:
+            if self.food_item and self.food_item.image:
                 return mark_safe(f'<img src="{self.food_item.image.url}" width="50" height="50" style="object-fit:cover; border-radius: 6px;" />')
         except (AttributeError, ValueError):
             pass

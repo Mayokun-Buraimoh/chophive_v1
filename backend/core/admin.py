@@ -23,11 +23,13 @@ class FoodItemAdmin(ImportExportModelAdmin):
 
 class OrderAdmin(ImportExportModelAdmin):
     inlines = [OrderItemsInlineAdmin]
-    search_fields = ['oid', 'customer_name', 'room_address', 'delivery_address']
+    search_fields = ['oid', 'customer_name', 'room_address', 'hostel']
     list_editable = ['payment_status']
     list_filter = ['payment_status', 'status']
-    list_display = ['oid', 'customer_name', 'room_address', 'delivery_batch', 'delivery_time', 'payment_status', 'sub_total', 'service_fee', 'total', 'date']
+    list_display = ['oid', 'customer_name', 'room_address', 'hostel', 'delivery_batch', 'payment_status', 'sub_total', 'service_fee', 'total', 'date']
     list_filter = ['payment_status', 'status', 'delivery_batch']
+
+    ordering = ['hostel']  # Orders alphabetically by hostel
 
 class CartAdmin(ImportExportModelAdmin):
     list_display = ['food_item', 'cart_id', 'qty', 'price', 'sub_total' ,'service_fee', 'total', 'date']
