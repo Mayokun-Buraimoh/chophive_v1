@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from core.models import Category, FoodItem, Cart, Vendor, Order, OrderItem, SiteSettings
+from core.models import Category, FoodItem, Cart, Vendor, Order, OrderItem, SiteSettings, Hostel, DeliveryBatch
 
 from import_export.admin import ImportExportModelAdmin
 
@@ -70,6 +70,19 @@ class SiteSettingsAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
+class HostelAdmin(ImportExportModelAdmin):
+    list_display = ['name', 'rooms', 'created_at']
+    search_fields = ['name']
+    prepopulated_fields = {"slug": ("name", )}
+
+
+class DeliveryBatchAdmin(ImportExportModelAdmin):
+    list_display = ['name', 'cutoff_time', 'is_active']
+    list_editable = ['is_active']
+    search_fields = ['name']
+
+
+
 
 # class OrderItemsAdmin(ImportExportModelAdmin):
     # list_filter = ['delivery_couriers', 'applied_coupon']
@@ -84,6 +97,10 @@ admin.site.register(OrderItem, OrderItemsAdmin)
 admin.site.register(Vendor)
 admin.site.register(FoodItem, FoodItemAdmin)
 admin.site.register(SiteSettings, SiteSettingsAdmin)
+admin.site.register(Hostel, HostelAdmin)
+admin.site.register(DeliveryBatch, DeliveryBatchAdmin)
+admin.site.register(Category)
+
 # class OrderItemAdmin(ImportExportModelAdmin):
 #     # list_filter = ['delivery_couriers', 'applied_coupon']
 #     list_editable = ['date']
