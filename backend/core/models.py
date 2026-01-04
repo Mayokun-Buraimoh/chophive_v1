@@ -10,6 +10,7 @@ from django.utils import timezone
 
 # Create your models here.
 class Vendor(models.Model):
+    user = models.OneToOneField(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='vendor', help_text="User account associated with this vendor")
     name = models.CharField(max_length=200, unique=True, help_text="Vendor/restaurant name")
     slug = models.SlugField(max_length=200, unique=True, blank=True, help_text="URL-friendly identifier")
     description = models.TextField(help_text="Vendor description")
@@ -208,6 +209,48 @@ class CartItem(models.Model):
         """Return price per unit (for API consistency)."""
         return self.food_item.price
 
+class Hostel(models.Model):
+    """
+    Hostel model representing a hostel.
+    """
+    name = models.CharField(max_length=100, unique=True, help_text="Hostel name")
+    slug = models.SlugField(max_length=100, unique=True, blank=True, help_text="Hostel slug")
+    rooms = models.IntegerField(default=100, help_text="Total number of rooms")
+    description = models.TextField(default='Unknown', help_text="Hostel description")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Hostel"
+        verbose_name_plural = "Hostels"
+    
+    def __str__(self):
+        return self.name
+    
+    def save(self, *args, **kwargs):
+        """Auto-generate slug from name if not provided."""
+        if not self.slug:
+            base_slug = slugify(self.name)
+            slug = base_slug
+            counter = 1
+            # Ensure slug is unique
+            while Hostel.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+class DeliveryBatch(models.Model):
+    """
+    Delivery batches with cutoff times.
+    """
+    name = models.CharField(max_length=50, help_text="Batch name (e.g., '1pm Delivery')")
+    cutoff_time = models.TimeField(help_text="Time after which this batch is unavailable")
+    is_active = models.BooleanField(default=True)
+    
+    def __str__(self):
+        return f"{self.name} (Cutoff: {self.cutoff_time})"
+
 
 class Order(models.Model):
     """
@@ -226,11 +269,6 @@ class Order(models.Model):
         ('Failed', 'Failed'),
     ]
     
-    DELIVERY_BATCH_CHOICES = [
-        ('1pm', '1pm'),
-        ('6pm', '6pm'),
-    ]
-    
     buyer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="buyer", blank=True)
     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name='orders', blank=True, null=True, help_text="Primary vendor (nullable for multi-vendor orders)")
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Total order amount")
@@ -239,7 +277,7 @@ class Order(models.Model):
     delivery_fee = models.DecimalField(default=0.00, max_digits=12, decimal_places=2, help_text="Delivery fee from SiteSettings")
     service_fee = models.DecimalField(default=0.00, max_digits=12, decimal_places=2, help_text="Service fee from SiteSettings")
     total = models.DecimalField(default=0.00, max_digits=12, decimal_places=2)
-    hostel = models.TextField(help_text="Delivery address for this order")
+    hostel = models.ForeignKey(Hostel, on_delete=models.CASCADE, related_name='orders', blank=True, null=True, help_text="Hostel associated with this order")
     customer_name = models.CharField(max_length=200, blank=True, help_text="Customer name for the order")
     room_address = models.CharField(max_length=200, blank=True, help_text="Room number or room address")
     delivery_time = models.CharField(max_length=100, blank=True, help_text="Preferred delivery time")
@@ -248,7 +286,7 @@ class Order(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     date = models.DateField(auto_now_add=True)
-    delivery_batch = models.CharField(max_length=10, choices=DELIVERY_BATCH_CHOICES, blank=True, help_text="Delivery batch (1pm or 6pm)")
+    delivery_batch = models.ForeignKey(DeliveryBatch, on_delete=models.SET_NULL, null=True, blank=True, help_text="Delivery batch")
     order_pin = models.IntegerField(blank=True, null=True, help_text="Order pin (4 digits)", unique=True)
     approved = models.BooleanField(default=False, help_text="Whether the order has been approved")
     oid = ShortUUIDField(length=10, max_length=25, alphabet="abcdefghijklmnopqrstuvxyz")
@@ -259,10 +297,7 @@ class Order(models.Model):
         ordering = ['-created_at']
     
     def __str__(self):
-        return f"Order #{self.id} - {self.user.username} - {self.vendor.name}"
-    
-    def __str__(self):
-        return self.oid
+        return f"Order #{self.id} - {self.buyer.username if self.buyer else 'No buyer'} - {self.vendor.name if self.vendor else 'No vendor'}"
     
     def get_order_items(self):
         return OrderItem.objects.filter(order=self)

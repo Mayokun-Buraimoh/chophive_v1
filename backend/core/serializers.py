@@ -1,7 +1,14 @@
 from rest_framework import serializers
 from decimal import Decimal
-from core.models import Vendor, FoodItem, Category, Cart, CartItem, Order, OrderItem
+from core.models import Vendor, FoodItem, Category, Cart, CartItem, Order, OrderItem, DeliveryBatch
 from userauths.serializers import UserSerializer
+
+
+class DeliveryBatchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DeliveryBatch
+        fields = '__all__'
+
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:

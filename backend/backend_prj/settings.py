@@ -31,7 +31,23 @@ SECRET_KEY = 'django-insecure-y(m4ssw(juk#6-@yl3xxw)7mg0m)jai%f2y$ifqug0t1#(csge
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+
+# CSRF & Session Settings (Fix for persistent localhost errors)
+CSRF_TRUSTED_ORIGINS = [
+    'http://127.0.0.1:8000',
+    'http://localhost:8000',
+]
+CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = 'Lax'
+
+# Rename cookies to force fresh start (bypasses old/stale cookies)
+CSRF_COOKIE_NAME = 'chophive_csrftoken'
+SESSION_COOKIE_NAME = 'chophive_sessionid'
+CSRF_COOKIE_DOMAIN = None
+
 
 
 # Application definition
@@ -59,6 +75,7 @@ INSTALLED_APPS = [
     'customer',
     'import_export', 
     'anymail',
+    'adminpanel',
 
 ]
 
@@ -133,6 +150,12 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
+
+
+# Authentication URLs
+LOGIN_URL = '/admin/login/'
+LOGIN_REDIRECT_URL = '/admin/dashboard/'
+LOGOUT_REDIRECT_URL = '/admin/login/'
 
 
 # Static files (CSS, JavaScript, Images)

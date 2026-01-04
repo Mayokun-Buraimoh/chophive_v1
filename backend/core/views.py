@@ -4,14 +4,15 @@ from django.shortcuts import get_object_or_404, render
 from django.http import Http404
 from django.db import transaction
 from django.db.models import Q
+from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError, NotFound
 from uuid import uuid4
 
-from core.models import Cart,CartItem, Category, FoodItem, Order, OrderItem, Vendor, SiteSettings
-from core.serializers import CartItemSerializer, CartSerializer, CategorySerializer, FoodItemSerializer, OrderSerializer, VendorSerializer
+from core.models import Cart,CartItem, Category, FoodItem, Order, OrderItem, Vendor, SiteSettings, Hostel, DeliveryBatch
+from core.serializers import CartItemSerializer, CartSerializer, CategorySerializer, FoodItemSerializer, OrderSerializer, VendorSerializer, DeliveryBatchSerializer
 from userauths.models import User, Profile
 from userauths.serializers import ProfileSerializer
 
@@ -1046,6 +1047,20 @@ class GetCartIDAPIView(generics.RetrieveAPIView):
         
         return Response({"cart_id": cart.cart_id}, status=status.HTTP_200_OK)
 
+class DeliveryBatchListView(generics.ListAPIView):
+    """
+    List available delivery batches.
+    Endpoint: GET /api/v1/delivery-batches/
+    Returns active batches where cutoff_time has not passed.
+    """
+    serializer_class = DeliveryBatchSerializer
+    permission_classes = [AllowAny]
+    
+    def get_queryset(self):
+        now = timezone.now().time()
+        return DeliveryBatch.objects.filter(is_active=True, cutoff_time__gt=now).order_by('cutoff_time')
+
+
 class CreateOrderAPIView(generics.CreateAPIView):
     """
     Create an order from cart items.
@@ -1080,10 +1095,9 @@ class CreateOrderAPIView(generics.CreateAPIView):
         # Get order information from request body
         hostel = payload.get('hostel')
         customer_name = payload.get('customer_name', '')
-        room_address = payload.get('room_address', '')
+        room_number = payload.get('room_number', '')
         delivery_batch = payload.get('delivery_batch', '')
         
-        # Validate required fields
         if not hostel:
             return Response(
                 {"error": "hostel is required"},
@@ -1099,12 +1113,30 @@ class CreateOrderAPIView(generics.CreateAPIView):
         #         status=status.HTTP_400_BAD_REQUEST
         #     )
         
-        # Validate delivery_batch if provided
-        if delivery_batch and delivery_batch not in ['1pm', '6pm']:
+        # Validate delivery_batch
+        if not delivery_batch:
             return Response(
-                {"error": "delivery_batch must be either '1pm' or '6pm'"},
+                {"error": "delivery_batch is required"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        batch_obj = None
+        # support ID or Name
+        try:
+            if isinstance(delivery_batch, int) or (isinstance(delivery_batch, str) and delivery_batch.isdigit()):
+                batch_obj = DeliveryBatch.objects.get(id=delivery_batch)
+            else:
+                batch_obj = DeliveryBatch.objects.get(name=delivery_batch)
+            
+            # Check if batch is active and within time
+            now = timezone.now().time()
+            if not batch_obj.is_active:
+                    return Response({"error": f"Delivery batch '{batch_obj.name}' is inactive"}, status=status.HTTP_400_BAD_REQUEST)
+            if batch_obj.cutoff_time <= now:
+                    return Response({"error": f"Delivery batch '{batch_obj.name}' has closed for today (Cutoff: {batch_obj.cutoff_time})"}, status=status.HTTP_400_BAD_REQUEST)
+                    
+        except DeliveryBatch.DoesNotExist:
+                return Response({"error": f"Delivery batch not found: {delivery_batch}"}, status=status.HTTP_400_BAD_REQUEST)
         
         if not cart_id:
             return Response(
@@ -1144,13 +1176,24 @@ class CreateOrderAPIView(generics.CreateAPIView):
 
         with transaction.atomic():
 
+            # Get hostel instance
+            hostel_input = hostel
+            try:
+                # Try to get by ID first, then by name if that fails (backward compatibility)
+                if isinstance(hostel_input, int) or (isinstance(hostel_input, str) and hostel_input.isdigit()):
+                    hostel_obj = Hostel.objects.get(id=hostel_input)
+                else:
+                    hostel_obj = Hostel.objects.get(name=hostel_input)
+            except Hostel.DoesNotExist:
+                return Response({'error': f'Hostel not found: {hostel_input}'}, status=status.HTTP_400_BAD_REQUEST)
+
             order = Order.objects.create(
                 buyer=user,
                 payment_status="Processing",
-                hostel=hostel,
+                hostel=hostel_obj,
                 customer_name=customer_name,
-                room_address=room_address,
-                delivery_batch=delivery_batch,
+                room_address=room_number,
+                delivery_batch=batch_obj, # Assign the object
             )
 
             # Get delivery_fee and service_fee from SiteSettings (always use site settings)

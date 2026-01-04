@@ -1,0 +1,152 @@
+{% extends 'adminpanel/base.html' %}
+{% load adminpanel_permissions %}
+
+{% block title %}Rider Dashboard - ChopHive{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex items-center justify-between">
+        <h1 class="text-3xl font-bold text-gray-800">Rider Dashboard</h1>
+        <div class="text-sm text-gray-600">
+            <i class="fas fa-calendar mr-2"></i>{{ today|date:"F d, Y" }}
+        </div>
+    </div>
+    
+    <!-- Tabs -->
+    <div class="bg-white rounded-lg shadow-md">
+        <div class="border-b border-gray-200 sticky top-0 bg-white z-10 overflow-x-auto">
+            <nav class="flex -mb-px min-w-max">
+                <a href="?tab=1pm" 
+                   class="flex-1 py-4 px-6 text-center border-b-2 font-medium text-sm whitespace-nowrap {% if active_tab == '1pm' %}border-blue-500 text-blue-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %}">
+                    1:00 PM
+                    {% if batch_1pm_count > 0 %}
+                    <span class="ml-2 bg-blue-100 text-blue-600 px-2 py-1 rounded-full text-xs">{{ batch_1pm_count }}</span>
+                    {% endif %}
+                </a>
+                <a href="?tab=6pm" 
+                   class="flex-1 py-4 px-6 text-center border-b-2 font-medium text-sm whitespace-nowrap {% if active_tab == '6pm' %}border-blue-500 text-blue-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %}">
+                    6:30 PM
+                    {% if batch_6pm_count > 0 %}
+                    <span class="ml-2 bg-blue-100 text-blue-600 px-2 py-1 rounded-full text-xs">{{ batch_6pm_count }}</span>
+                    {% endif %}
+                </a>
+                <a href="?tab=scheduled" 
+                   class="flex-1 py-4 px-6 text-center border-b-2 font-medium text-sm whitespace-nowrap {% if active_tab == 'scheduled' %}border-blue-500 text-blue-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %}">
+                    Scheduled
+                    {% if scheduled_count > 0 %}
+                    <span class="ml-2 bg-blue-100 text-blue-600 px-2 py-1 rounded-full text-xs">{{ scheduled_count }}</span>
+                    {% endif %}
+                </a>
+            </nav>
+        </div>
+        
+        <!-- Orders -->
+        <div class="p-6">
+            {% if orders %}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {% for order in orders %}
+                    <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
+                        <div class="flex items-start justify-between mb-3">
+                            <div>
+                                <span class="font-semibold text-gray-800">Order #{{ order.oid }}</span>
+                                <span class="ml-2 px-2 py-1 text-xs font-semibold rounded-full 
+                                    {% if order.status == 'Delivered' %}bg-green-100 text-green-800
+                                    {% elif order.status == 'Processing' %}bg-blue-100 text-blue-800
+                                    {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                    {{ order.status }}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2 text-sm text-gray-600 mb-4">
+                            <p class="flex items-center">
+                                <i class="fas fa-user w-5 mr-2"></i>
+                                {{ order.customer_name|default:"N/A" }}
+                            </p>
+                            <p class="flex items-center">
+                                <i class="fas fa-building w-5 mr-2"></i>
+                                {{ order.hostel|default:"N/A" }}
+                            </p>
+                            <p class="flex items-center">
+                                <i class="fas fa-map-marker-alt w-5 mr-2"></i>
+                                {{ order.room_address|default:"N/A" }}
+                            </p>
+                            <p class="flex items-center">
+                                <i class="fas fa-money-bill-wave w-5 mr-2"></i>
+                                ₦{{ order.total|floatformat:2 }}
+                            </p>
+                        </div>
+                        
+                        <!-- Order Items -->
+                        <div class="mb-4 pt-3 border-t border-gray-200">
+                            <p class="text-xs font-semibold text-gray-500 mb-2">ITEMS:</p>
+                            <div class="space-y-1">
+                                {% for item in order.items.all %}
+                                <p class="text-xs text-gray-700">
+                                    {{ item.food_item.name }} x{{ item.quantity }}
+                                </p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <!-- Delivery Button -->
+                        {% if order.status != 'Delivered' %}
+                        <button onclick="markAsDelivered({{ order.id }})" 
+                                class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg transition duration-200">
+                            <i class="fas fa-check mr-2"></i>Mark as Delivered
+                        </button>
+                        {% else %}
+                        <button disabled 
+                                class="w-full bg-gray-300 text-gray-600 font-semibold py-2 rounded-lg cursor-not-allowed">
+                            <i class="fas fa-check-circle mr-2"></i>Delivered
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-12 text-gray-500">
+                    <i class="fas fa-inbox text-4xl mb-4"></i>
+                    <p>No orders for this batch</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    function markAsDelivered(orderId) {
+        if (!confirm('Mark this order as delivered?')) {
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('status', 'Delivered');
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+        
+        fetch(`/admin/rider-dashboard/update-delivery/${orderId}/`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error updating delivery status');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error updating delivery status');
+        });
+    }
+</script>
+{% endblock %}
+{% endblock %}
+

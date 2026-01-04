@@ -1,0 +1,71 @@
+{% load adminpanel_permissions %}
+{% get_user_role_tag user as user_role %}
+<nav class="bg-white shadow-md border-b border-gray-200">
+    <div class="px-4 py-3">
+        <div class="flex items-center justify-between">
+            <!-- Mobile menu button -->
+            <button onclick="toggleMobileMenu()" class="md:hidden text-gray-600 hover:text-gray-900">
+                <i class="fas fa-bars text-xl"></i>
+            </button>
+
+            <!-- Logo/Brand -->
+            <div class="flex items-center">
+                <h1 class="text-xl font-bold text-gray-800">ChopHive Admin</h1>
+            </div>
+
+            <!-- Profile dropdown -->
+            <div class="relative">
+                <button id="profile-button" onclick="toggleProfileDropdown()"
+                    class="flex items-center space-x-2 text-gray-700 hover:text-gray-900">
+                    <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
+                        {% if user.profile.image %}
+                        <img src="{{ user.profile.image.url }}" alt="Profile" class="w-8 h-8 rounded-full object-cover">
+                        {% else %}
+                        <i class="fas fa-user text-gray-600"></i>
+                        {% endif %}
+                    </div>
+                    <span class="hidden md:block">{{ user.get_full_name|default:user.username }}</span>
+                    <i class="fas fa-chevron-down text-xs"></i>
+                </button>
+
+                <div id="profile-dropdown"
+                    class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                    <a href="{% url 'adminpanel:profile' %}"
+                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        <i class="fas fa-user mr-2"></i> Profile
+                    </a>
+
+                    {% if user_role == 'admin' %}
+                    <a href="{% url 'adminpanel:admin_dashboard' %}"
+                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        <i class="fas fa-tachometer-alt mr-2"></i> Admin Dashboard
+                    </a>
+                    {% endif %}
+
+
+
+                    {% if user_role == 'vendor_manager' %}
+                    <a href="{% url 'adminpanel:vendor_dashboard' %}"
+                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        <i class="fas fa-store mr-2"></i> Vendor Manager
+                    </a>
+                    {% endif %}
+
+                    {% if user_role == 'rider' %}
+                    <a href="{% url 'adminpanel:rider_dashboard' %}"
+                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        <i class="fas fa-motorcycle mr-2"></i> Rider Dashboard
+                    </a>
+                    {% endif %}
+
+                    <div class="border-t border-gray-200 my-1"></div>
+
+                    <a href="{% url 'adminpanel:logout' %}"
+                        class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
+                        <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>

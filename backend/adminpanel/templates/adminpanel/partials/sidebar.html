@@ -1,0 +1,123 @@
+{% load adminpanel_permissions %}
+{% get_user_role_tag user as user_role %}
+
+<!-- Desktop Sidebar -->
+<aside class="hidden md:block w-64 bg-white shadow-lg border-r border-gray-200 min-h-screen">
+    <nav class="p-4">
+        <ul class="space-y-2">
+            {% if user_role == 'admin' %}
+            <li>
+                <a href="{% url 'adminpanel:admin_dashboard' %}"
+                    class="flex items-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 {% if request.resolver_match.url_name == 'admin_dashboard' %}bg-gray-100 font-semibold{% endif %}">
+                    <i class="fas fa-tachometer-alt mr-3"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            {% endif %}
+
+            {% if user_role == 'admin' or user_role == 'vendor_manager' %}
+            <li>
+                <a href="{% if user_role == 'admin' %}{% url 'adminpanel:admin_dashboard' %}{% else %}{% url 'adminpanel:vendor_dashboard' %}{% endif %}"
+                    class="flex items-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100">
+                    <i class="fas fa-shopping-cart mr-3"></i>
+                    <span>Orders</span>
+                </a>
+            </li>
+            {% endif %}
+
+            {% if user_role == 'admin' %}
+            <li>
+                <a href="{% url 'adminpanel:vendors_list' %}"
+                    class="flex items-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 {% if request.resolver_match.url_name == 'vendors_list' %}bg-gray-100 font-semibold{% endif %}">
+                    <i class="fas fa-store mr-3"></i>
+                    <span>Vendors</span>
+                </a>
+            </li>
+            {% endif %}
+
+            <li>
+                <a href="{% url 'adminpanel:profile' %}"
+                    class="flex items-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 {% if request.resolver_match.url_name == 'profile' %}bg-gray-100 font-semibold{% endif %}">
+                    <i class="fas fa-user mr-3"></i>
+                    <span>Profile</span>
+                </a>
+            </li>
+
+            <li class="pt-4 border-t border-gray-200">
+                <a href="{% url 'adminpanel:logout' %}"
+                    class="flex items-center px-4 py-3 rounded-lg text-red-600 hover:bg-red-50">
+                    <i class="fas fa-sign-out-alt mr-3"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</aside>
+
+<!-- Mobile Sidebar -->
+<aside id="mobile-sidebar"
+    class="md:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform -translate-x-full transition-transform duration-300 ease-in-out">
+    <div class="p-4">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold text-gray-800">Menu</h2>
+            <button onclick="toggleMobileMenu()" class="text-gray-600 hover:text-gray-900">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <nav>
+            <ul class="space-y-2">
+                {% if user_role == 'admin' %}
+                <li>
+                    <a href="{% url 'adminpanel:admin_dashboard' %}" onclick="toggleMobileMenu()"
+                        class="flex items-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100">
+                        <i class="fas fa-tachometer-alt mr-3"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% if user_role == 'admin' or user_role == 'vendor_manager' %}
+                <li>
+                    <a href="{% if user_role == 'admin' %}{% url 'adminpanel:admin_dashboard' %}{% else %}{% url 'adminpanel:vendor_dashboard' %}{% endif %}"
+                        onclick="toggleMobileMenu()"
+                        class="flex items-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100">
+                        <i class="fas fa-shopping-cart mr-3"></i>
+                        <span>Orders</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% if user_role == 'admin' %}
+                <li>
+                    <a href="{% url 'adminpanel:vendors_list' %}" onclick="toggleMobileMenu()"
+                        class="flex items-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100">
+                        <i class="fas fa-store mr-3"></i>
+                        <span>Vendors</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                <li>
+                    <a href="{% url 'adminpanel:profile' %}" onclick="toggleMobileMenu()"
+                        class="flex items-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100">
+                        <i class="fas fa-user mr-3"></i>
+                        <span>Profile</span>
+                    </a>
+                </li>
+
+                <li class="pt-4 border-t border-gray-200">
+                    <a href="{% url 'adminpanel:logout' %}" onclick="toggleMobileMenu()"
+                        class="flex items-center px-4 py-3 rounded-lg text-red-600 hover:bg-red-50">
+                        <i class="fas fa-sign-out-alt mr-3"></i>
+                        <span>Logout</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</aside>
+
+<!-- Mobile overlay -->
+<div id="mobile-overlay" onclick="toggleMobileMenu()"
+    class="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>

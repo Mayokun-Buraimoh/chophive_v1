@@ -23,8 +23,11 @@ from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    # Custom Admin Panel (at /admin/)
+    path('admin/', include('adminpanel.urls', namespace='adminpanel')),
     
+    # Django Admin (moved to /django-admin/)
+    path('django-admin/', admin.site.urls),
     # API endpoints
     path('api/v1/', include('api.urls')),
 
