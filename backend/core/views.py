@@ -1057,7 +1057,7 @@ class DeliveryBatchListView(generics.ListAPIView):
     permission_classes = [AllowAny]
     
     def get_queryset(self):
-        now = timezone.now().time()
+        now = timezone.localtime().time()
         return DeliveryBatch.objects.filter(is_active=True, cutoff_time__gt=now).order_by('cutoff_time')
 
 
@@ -1129,7 +1129,7 @@ class CreateOrderAPIView(generics.CreateAPIView):
                 batch_obj = DeliveryBatch.objects.get(name=delivery_batch)
             
             # Check if batch is active and within time
-            now = timezone.now().time()
+            now = timezone.localtime().time()
             if not batch_obj.is_active:
                     return Response({"error": f"Delivery batch '{batch_obj.name}' is inactive"}, status=status.HTTP_400_BAD_REQUEST)
             if batch_obj.cutoff_time <= now:
