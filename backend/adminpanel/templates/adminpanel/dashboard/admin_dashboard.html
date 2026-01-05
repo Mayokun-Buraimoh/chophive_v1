@@ -12,7 +12,7 @@
             <i class="fas fa-calendar mr-2"></i>{{ today|date:"F d, Y" }}
         </div>
     </div>
-
+    
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
@@ -26,7 +26,7 @@
                 </div>
             </div>
         </div>
-
+        
         <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
             <div class="flex items-center justify-between">
                 <div>
@@ -38,11 +38,11 @@
                 </div>
             </div>
         </div>
-
+        
         <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-gray-600">Vendor Managers</p>
+                    <p class="text-sm text-gray-600">Cafeteria Managers</p>
                     <p class="text-2xl font-bold text-gray-800">{{ total_vendor_managers }}</p>
                 </div>
                 <div class="bg-purple-100 rounded-full p-3">
@@ -50,7 +50,7 @@
                 </div>
             </div>
         </div>
-
+        
         <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-500">
             <div class="flex items-center justify-between">
                 <div>
@@ -62,7 +62,7 @@
                 </div>
             </div>
         </div>
-
+        
         <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
             <div class="flex items-center justify-between">
                 <div>
@@ -75,7 +75,7 @@
             </div>
         </div>
     </div>
-
+    
     <!-- Charts and Recent Orders -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Orders Chart -->
@@ -83,7 +83,7 @@
             <h2 class="text-xl font-semibold text-gray-800 mb-4">Orders by Status</h2>
             <canvas id="ordersChart" height="200"></canvas>
         </div>
-
+        
         <!-- Today's Summary -->
         <div class="bg-white rounded-lg shadow-md p-6">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">Today's Summary</h2>
@@ -96,14 +96,14 @@
                     <span class="text-gray-700">Paid Orders</span>
                     <span class="text-2xl font-bold text-green-600">
                         {% for status in orders_by_status %}
-                        {% if status.status == 'Paid' %}{{ status.count }}{% endif %}
+                            {% if status.status == 'Paid' %}{{ status.count }}{% endif %}
                         {% endfor %}
                     </span>
                 </div>
             </div>
         </div>
     </div>
-
+    
     <!-- Recent Orders -->
     <div class="bg-white rounded-lg shadow-md p-6">
         <h2 class="text-xl font-semibold text-gray-800 mb-4">Recent Orders</h2>
@@ -125,19 +125,18 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{{ order.oid }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {% if order.customer_name %}
-                            {{ order.customer_name }}
+                                {{ order.customer_name }}
                             {% elif order.buyer %}
-                            {{ order.buyer.username }}
+                                {{ order.buyer.username }}
                             {% else %}
-                            Guest
+                                Guest
                             {% endif %}
 
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {{ order.vendor.name|default:"N/A" }}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₦{{ order.total|floatformat:2 }}
-                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₦{{ order.total|floatformat:2 }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="px-2 py-1 text-xs font-semibold rounded-full 
                                 {% if order.status == 'Delivered' %}bg-green-100 text-green-800
@@ -167,26 +166,26 @@
     // Orders Chart
     const ctx = document.getElementById('ordersChart').getContext('2d');
     const ordersData = {
-        labels: [{% for status in orders_by_status %}'{{ status.status }}'{% if not forloop.last %}, {% endif %} {% endfor %}],
-    datasets: [{
-        label: 'Orders',
-        data: [{% for status in orders_by_status %}{{ status.count }}{% if not forloop.last %}, {% endif %} {% endfor %}],
-    backgroundColor: [
-        'rgba(59, 130, 246, 0.5)',
-        'rgba(16, 185, 129, 0.5)',
-        'rgba(245, 158, 11, 0.5)',
-        'rgba(239, 68, 68, 0.5)',
-    ],
-        borderColor: [
-            'rgba(59, 130, 246, 1)',
-            'rgba(16, 185, 129, 1)',
-            'rgba(245, 158, 11, 1)',
-            'rgba(239, 68, 68, 1)',
-        ],
+        labels: [{% for status in orders_by_status %}'{{ status.status }}'{% if not forloop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Orders',
+            data: [{% for status in orders_by_status %}{{ status.count }}{% if not forloop.last %},{% endif %}{% endfor %}],
+            backgroundColor: [
+                'rgba(59, 130, 246, 0.5)',
+                'rgba(16, 185, 129, 0.5)',
+                'rgba(245, 158, 11, 0.5)',
+                'rgba(239, 68, 68, 0.5)',
+            ],
+            borderColor: [
+                'rgba(59, 130, 246, 1)',
+                'rgba(16, 185, 129, 1)',
+                'rgba(245, 158, 11, 1)',
+                'rgba(239, 68, 68, 1)',
+            ],
             borderWidth: 1
         }]
     };
-
+    
     new Chart(ctx, {
         type: 'doughnut',
         data: ordersData,
@@ -198,3 +197,4 @@
 </script>
 {% endblock %}
 {% endblock %}
+

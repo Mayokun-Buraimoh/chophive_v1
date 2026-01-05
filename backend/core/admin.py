@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from core.models import Category, FoodItem, Cart, Vendor, Order, OrderItem, SiteSettings, Hostel, DeliveryBatch
+from core.models import Category, FoodItem, Cart, Vendor, Order, OrderItem, SiteSettings, Hostel, DeliveryBatch, Rider, Room
 
 from import_export.admin import ImportExportModelAdmin
 
@@ -8,6 +8,11 @@ from import_export.admin import ImportExportModelAdmin
 
 class OrderItemsInlineAdmin(admin.TabularInline):
     model = OrderItem
+
+class RoomInline(admin.TabularInline):
+    model = Room
+    extra = 1
+
 
 class FoodItemAdmin(ImportExportModelAdmin):
     # inlines = [ProductImagesAdmin, SpecificationAdmin, ColorAdmin, SizeAdmin]
@@ -26,8 +31,9 @@ class OrderAdmin(ImportExportModelAdmin):
     search_fields = ['oid', 'customer_name', 'room_address', 'hostel']
     list_editable = ['payment_status']
     list_filter = ['payment_status', 'status']
-    list_display = ['oid', 'customer_name', 'room_address', 'hostel', 'delivery_batch', 'payment_status', 'sub_total', 'service_fee', 'total', 'date']
+    list_display = ['oid', 'customer_name', 'room_address', 'hostel', 'delivery_batch', 'payment_status', 'sub_total', 'total_pack_fee', 'service_fee', 'total', 'date']
     list_filter = ['payment_status', 'status', 'delivery_batch']
+
 
     ordering = ['hostel']  # Orders alphabetically by hostel
 
@@ -71,15 +77,25 @@ class SiteSettingsAdmin(admin.ModelAdmin):
 
 
 class HostelAdmin(ImportExportModelAdmin):
-    list_display = ['name', 'rooms', 'created_at']
+    list_display = ['name', 'created_at']
     search_fields = ['name']
     prepopulated_fields = {"slug": ("name", )}
+    inlines = [RoomInline]
+
 
 
 class DeliveryBatchAdmin(ImportExportModelAdmin):
     list_display = ['name', 'cutoff_time', 'is_active']
     list_editable = ['is_active']
     search_fields = ['name']
+
+
+class RiderAdmin(ImportExportModelAdmin):
+    list_display = ['user', 'is_active', 'created_at']
+    list_filter = ['is_active', 'hostels']
+    search_fields = ['user__username', 'user__email']
+    filter_horizontal = ['hostels']
+
 
 
 
@@ -94,12 +110,22 @@ class DeliveryBatchAdmin(ImportExportModelAdmin):
 admin.site.register(Order, OrderAdmin)
 admin.site.register(Cart, CartAdmin)
 admin.site.register(OrderItem, OrderItemsAdmin)
-admin.site.register(Vendor)
+class VendorAdmin(ImportExportModelAdmin):
+    list_display = ['name', 'slug', 'pack_fee', 'is_active', 'created_at']
+    list_editable = ['pack_fee', 'is_active']
+    search_fields = ['name', 'slug']
+
+admin.site.register(Vendor, VendorAdmin)
+
 admin.site.register(FoodItem, FoodItemAdmin)
 admin.site.register(SiteSettings, SiteSettingsAdmin)
 admin.site.register(Hostel, HostelAdmin)
 admin.site.register(DeliveryBatch, DeliveryBatchAdmin)
+admin.site.register(Rider, RiderAdmin)
+admin.site.register(Room)
 admin.site.register(Category)
+
+
 
 # class OrderItemAdmin(ImportExportModelAdmin):
 #     # list_filter = ['delivery_couriers', 'applied_coupon']

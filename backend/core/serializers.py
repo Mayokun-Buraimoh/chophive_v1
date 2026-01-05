@@ -1,10 +1,24 @@
 from rest_framework import serializers
 from decimal import Decimal
-from core.models import Vendor, FoodItem, Category, Cart, CartItem, Order, OrderItem, DeliveryBatch
+from core.models import Vendor, FoodItem, Category, Cart, CartItem, Order, OrderItem, DeliveryBatch, Hostel, Room
 from userauths.serializers import UserSerializer
 
 
+class RoomSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Room
+        fields = ['id', 'number']
+
+class HostelSerializer(serializers.ModelSerializer):
+    rooms = RoomSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = Hostel
+        fields = ['id', 'name', 'slug', 'rooms']
+
+
 class DeliveryBatchSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = DeliveryBatch
         fields = '__all__'
@@ -101,7 +115,14 @@ class OrderSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Order
-        fields = '__all__'
+        fields = [
+            'id', 'oid', 'buyer', 'vendor', 'order_item', 'customer_name', 
+            'hostel', 'room_address', 'delivery_batch', 'delivery_time',
+            'status', 'payment_status', 'payment_id', 'order_pin', 'approved',
+            'sub_total', 'delivery_fee', 'service_fee', 'total_pack_fee', 'total', 'total_amount',
+            'created_at', 'updated_at', 'date'
+        ]
+
 
     def __init__(self, *args, **kwargs):
         super(OrderSerializer, self).__init__(*args, **kwargs)
@@ -121,7 +142,8 @@ class VendorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Vendor
-        fields = '__all__'
+        fields = ['id', 'user', 'name', 'slug', 'description', 'address', 'logo', 'pack_fee', 'is_active', 'created_at']
+
 
     def __init__(self, *args, **kwargs):
         super(VendorSerializer, self).__init__(*args, **kwargs)

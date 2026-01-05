@@ -19,6 +19,8 @@ urlpatterns = [
     path('food-items/', core_views.FoodItemListView.as_view(), name='food-items'),
     path('food-item/<str:item_id>/', core_views.FoodItemDetailView.as_view(), name='food-item-detail'),
     path('delivery-batches/', core_views.DeliveryBatchListView.as_view(), name='delivery-batches'),
+    path('hostels/', core_views.HostelListView.as_view(), name='hostels'),
+
     path('cart-view/', core_views.CartAPIView.as_view(), name='cart-view'),
     # path('cart-list/', core_views.CartListView.as_view(), name='cart-list'),
     # path('cart-list/<str:cart_id>/', core_views.CartListView.as_view(), name='cart-list'),

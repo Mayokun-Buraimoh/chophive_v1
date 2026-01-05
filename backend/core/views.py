@@ -11,8 +11,8 @@ from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError, NotFound
 from uuid import uuid4
 
-from core.models import Cart,CartItem, Category, FoodItem, Order, OrderItem, Vendor, SiteSettings, Hostel, DeliveryBatch
-from core.serializers import CartItemSerializer, CartSerializer, CategorySerializer, FoodItemSerializer, OrderSerializer, VendorSerializer, DeliveryBatchSerializer
+from core.models import Cart,CartItem, Category, FoodItem, Order, OrderItem, Vendor, SiteSettings, Hostel, DeliveryBatch, Room
+from core.serializers import CartItemSerializer, CartSerializer, CategorySerializer, FoodItemSerializer, OrderSerializer, VendorSerializer, DeliveryBatchSerializer, HostelSerializer
 from userauths.models import User, Profile
 from userauths.serializers import ProfileSerializer
 
@@ -1187,6 +1187,16 @@ class CreateOrderAPIView(generics.CreateAPIView):
             except Hostel.DoesNotExist:
                 return Response({'error': f'Hostel not found: {hostel_input}'}, status=status.HTTP_400_BAD_REQUEST)
 
+            # Validate Room Number
+            if not room_number:
+                return Response({'error': 'room_number is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            try:
+                room_obj = Room.objects.get(hostel=hostel_obj, number=room_number)
+            except Room.DoesNotExist:
+                return Response({'error': f"Room '{room_number}' not found in '{hostel_obj.name}'"}, status=status.HTTP_400_BAD_REQUEST)
+
+
             order = Order.objects.create(
                 buyer=user,
                 payment_status="Processing",
@@ -1197,10 +1207,24 @@ class CreateOrderAPIView(generics.CreateAPIView):
             )
 
             # Get delivery_fee and service_fee from SiteSettings (always use site settings)
-            delivery_fee = site_settings.delivery_fee
-            service_fee = site_settings.service_fee
+            base_delivery_fee = site_settings.delivery_fee
+            base_service_fee = site_settings.service_fee
+            
+            # Calculate total packs and total fees
+            total_packs = sum(item.quantity for item in cart_items)
+            total_delivery_fee = base_delivery_fee * total_packs
+            total_service_fee = base_service_fee * total_packs
+
+            # Calculate Pack Fees based on unique vendors
+            unique_vendors = set()
+            for cart_item in cart_items:
+                if cart_item.vendor:
+                    unique_vendors.add(cart_item.vendor)
+            
+            total_pack_fee = sum(v.pack_fee for v in unique_vendors)
             
             for cart_item in cart_items:
+
                 # Calculate subtotal for this item
                 item_subtotal = cart_item.subtotal  # Uses the property from CartItem model
                 
@@ -1224,10 +1248,14 @@ class CreateOrderAPIView(generics.CreateAPIView):
                 
 
             order.sub_total = total_sub_total
-            order.delivery_fee = Decimal(str(delivery_fee))
-            order.service_fee = service_fee
-            order.total = total_sub_total + service_fee + Decimal(str(delivery_fee))
+            order.delivery_fee = total_delivery_fee
+            order.service_fee = total_service_fee
+            order.total_pack_fee = total_pack_fee
+            order.total = total_sub_total + total_service_fee + total_delivery_fee + total_pack_fee
             order.total_amount = order.total
+
+
+
 
             
             order.save()
@@ -1255,109 +1283,12 @@ class CheckoutView(generics.RetrieveAPIView):
         except Order.DoesNotExist:
             raise NotFound(f"Order with OID '{order_oid}' not found")
 
-# class CheckoutView(generics.ListAPIView):
-#     """
-#     Retrieve order details for checkout summary.
-#     Endpoint: GET /api/v1/checkout/{user_id}/ or GET /api/v1/checkout/{user_id}/{order_id}/
-#     Returns order details with items and totals for checkout confirmation.
-    
-#     Authentication:
-#     - Option 1: Provide JWT token in Authorization header (recommended)
-#     - Option 2: Provide user_id in URL (less secure)
-    
-#     If order_id is provided, returns that specific order.
-#     If only user_id is provided, returns the latest order for that user.
-#     """
-#     serializer_class = OrderSerializer
-#     permission_classes = [AllowAny]  # Allow both authenticated and unauthenticated
-    
-#     def get_queryset(self):
-#         """Get orders based on user_id from URL or authenticated user."""
-#         user_id = self.kwargs.get('user_id')
-#         order_id = self.kwargs.get('order_id')
-        
-#         # Determine user
-#         user = None
-#         if self.request.user.is_authenticated:
-#             user = self.request.user
-#             # If user_id in URL, validate it matches authenticated user
-#             if user_id and user.id != int(user_id):
-#                 return Order.objects.none()  # Return empty queryset if mismatch
-#         elif user_id:
-#             try:
-#                 user = User.objects.get(id=user_id)
-#             except User.DoesNotExist:
-#                 return Order.objects.none()
-#         else:
-#             return Order.objects.none()
-        
-#         # Filter orders by user
-#         queryset = Order.objects.filter(user=user).order_by('-created_at')
-        
-#         # If order_id is provided, filter to that specific order
-#         if order_id:
-#             queryset = queryset.filter(id=order_id)
-        
-#         return queryset
-    
-#     def list(self, request, *args, **kwargs):
-#         """List orders or retrieve specific order with checkout summary."""
-#         queryset = self.get_queryset()
-        
-#         if not queryset.exists():
-#             raise NotFound({
-#                 "error": "No orders found",
-#                 "message": "No orders found for the specified user."
-#             })
-        
-#         # Get the first order (latest if multiple, or specific if order_id provided)
-#         order = queryset.first()
-        
-#         # Calculate totals from order items
-#         order_items = order.items.all()
-#         items_data = []
-#         calculated_subtotal = Decimal('0.00')
-        
-#         for item in order_items:
-#             item_subtotal = Decimal(str(item.price)) * Decimal(item.quantity)
-#             calculated_subtotal += item_subtotal
-#             items_data.append({
-#                 'food_item': item.food_item.name,
-#                 'food_item_id': item.food_item.item_id,
-#                 'quantity': item.quantity,
-#                 'price': str(item.price),
-#                 'subtotal': str(item_subtotal),
-#             })
-        
-#         # Get delivery and service fees (if stored separately, otherwise calculate)
-#         # For now, using order total_amount - calculated_subtotal as fees
-#         fees = order.total_amount - calculated_subtotal
-        
-#         # Get unique vendors from order items
-#         vendors_set = set()
-#         for item in order_items:
-#             if item.vendor:
-#                 vendors_set.add(item.vendor.name)
-        
-#         checkout_summary = {
-#             'order_id': order.id,
-#             'order_pin': order.order_pin,
-#             'primary_vendor': order.vendor.name if order.vendor else None,
-#             'vendors': list(vendors_set),  # List of all vendors in this order
-#             'status': order.status,
-#             'payment_status': order.payment_status,
-#             'delivery_address': order.delivery_address,
-#             'items': items_data,
-#             'summary': {
-#                 'subtotal': str(calculated_subtotal),
-#                 'fees': str(fees),
-#                 'total_amount': str(order.total_amount),
-#             },
-#             'created_at': order.created_at,
-#         }
-        
-#         return Response(checkout_summary, status=status.HTTP_200_OK)
-        
-            
-      
-    
+class HostelListView(generics.ListAPIView):
+    """
+    List all available hostels with their rooms.
+    """
+    serializer_class = HostelSerializer
+    queryset = Hostel.objects.all().prefetch_related('rooms')
+    permission_classes = [AllowAny]
+
+

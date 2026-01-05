@@ -17,9 +17,9 @@ class Vendor(models.Model):
     address = models.TextField(help_text="Vendor physical address", blank=True, null=True)
     logo = models.FileField(upload_to='vendor_logos/', blank=True, null=True, help_text="Vendor logo image")
     is_active = models.BooleanField(default=True, help_text="Whether the vendor is currently active")
+    pack_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Packaging fee per order from this vendor")
     created_at = models.DateTimeField(auto_now_add=True)
-    
-    
+
     class Meta:
         verbose_name = "Vendor"
         verbose_name_plural = "Vendors"
@@ -215,7 +215,7 @@ class Hostel(models.Model):
     """
     name = models.CharField(max_length=100, unique=True, help_text="Hostel name")
     slug = models.SlugField(max_length=100, unique=True, blank=True, help_text="Hostel slug")
-    rooms = models.IntegerField(default=100, help_text="Total number of rooms")
+    # rooms = models.IntegerField(default=100, help_text="Total number of rooms")
     description = models.TextField(default='Unknown', help_text="Hostel description")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -239,6 +239,42 @@ class Hostel(models.Model):
                 counter += 1
             self.slug = slug
         super().save(*args, **kwargs)
+
+class Room(models.Model):
+    hostel = models.ForeignKey(
+        Hostel,
+        on_delete=models.CASCADE,
+        related_name="rooms"
+    )
+    number = models.CharField(
+        max_length=10,
+        help_text="Room number e.g 1, 2, 3, 4"
+    )
+
+    class Meta:
+        unique_together = ("hostel", "number")
+        ordering = ["number"]
+
+    def __str__(self):
+        return f"{self.hostel.name} - Room {self.number}"
+
+        
+class Rider(models.Model):
+    """
+    Rider model representing a delivery person.
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='rider_profile', help_text="User account for this rider")
+    hostels = models.ManyToManyField(Hostel, related_name='riders', blank=True, help_text="Hostels this rider delivers to")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Rider"
+        verbose_name_plural = "Riders"
+
+    def __str__(self):
+        return f"Rider: {self.user.username}"
+ 
 
 class DeliveryBatch(models.Model):
     """
@@ -276,7 +312,9 @@ class Order(models.Model):
     sub_total = models.DecimalField(default=0.00, max_digits=12, decimal_places=2)
     delivery_fee = models.DecimalField(default=0.00, max_digits=12, decimal_places=2, help_text="Delivery fee from SiteSettings")
     service_fee = models.DecimalField(default=0.00, max_digits=12, decimal_places=2, help_text="Service fee from SiteSettings")
+    total_pack_fee = models.DecimalField(default=0.00, max_digits=12, decimal_places=2, help_text="Total packaging fees for all vendors in this order")
     total = models.DecimalField(default=0.00, max_digits=12, decimal_places=2)
+
     hostel = models.ForeignKey(Hostel, on_delete=models.CASCADE, related_name='orders', blank=True, null=True, help_text="Hostel associated with this order")
     customer_name = models.CharField(max_length=200, blank=True, help_text="Customer name for the order")
     room_address = models.CharField(max_length=200, blank=True, help_text="Room number or room address")
@@ -377,38 +415,6 @@ class OrderItem(models.Model):
     def subtotal(self):
         """Calculate subtotal for this order item."""
         return self.price * self.quantity
-
-# class Payment(models.Model):
-#     """
-#     Payment model for tracking payment transactions.
-#     """
-#     PAYMENT_METHOD_CHOICES = [
-#         ('Paystack', 'Paystack'),
-#         ('Other', 'Other'),
-#     ]
-    
-#     STATUS_CHOICES = [
-#         ('Success', 'Success'),
-#         ('Failed', 'Failed'),
-#         ('Pending', 'Pending'),
-#     ]
-    
-#     order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='payment', help_text="Related order")
-#     amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))], help_text="Payment amount")
-#     method = models.CharField(max_length=50, choices=PAYMENT_METHOD_CHOICES, default='Stripe', help_text="Payment method")
-#     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending', help_text="Payment status")
-#     transaction_id = models.CharField(max_length=200, blank=True, help_text="Transaction ID from payment gateway")
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-    
-#     class Meta:
-#         verbose_name = "Payment"
-#         verbose_name_plural = "Payments"
-#         ordering = ['-created_at']
-    
-#     def __str__(self):
-#         return f"Payment for Order #{self.order.id} - {self.status}"
-
 
 class SiteSettings(models.Model):
     """
