@@ -4,17 +4,17 @@
 {% block title %}Admin Dashboard - ChopHive{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-6 px-2 md:px-0">
     <!-- Page Header -->
     <div class="flex items-center justify-between">
-        <h1 class="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
-        <div class="text-sm text-gray-600">
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-800">Admin Dashboard</h1>
+        <div class="hidden sm:block text-sm text-gray-600">
             <i class="fas fa-calendar mr-2"></i>{{ today|date:"F d, Y" }}
         </div>
     </div>
-    
-    <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+
+    <!-- Stats Cards (Grid adjusted for touch) -->
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
         <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
             <div class="flex items-center justify-between">
                 <div>
@@ -26,7 +26,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
             <div class="flex items-center justify-between">
                 <div>
@@ -38,11 +38,11 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-gray-600">Cafeteria Managers</p>
+                    <p class="text-sm text-gray-600">Managers</p>
                     <p class="text-2xl font-bold text-gray-800">{{ total_vendor_managers }}</p>
                 </div>
                 <div class="bg-purple-100 rounded-full p-3">
@@ -50,7 +50,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-500">
             <div class="flex items-center justify-between">
                 <div>
@@ -62,11 +62,11 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-gray-600">Total Revenue</p>
+                    <p class="text-sm text-gray-600">Revenue</p>
                     <p class="text-2xl font-bold text-gray-800">₦{{ total_revenue|floatformat:2 }}</p>
                 </div>
                 <div class="bg-yellow-100 rounded-full p-3">
@@ -75,15 +75,17 @@
             </div>
         </div>
     </div>
-    
-    <!-- Charts and Recent Orders -->
+
+    <!-- Charts and Today's Summary -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Orders Chart -->
         <div class="bg-white rounded-lg shadow-md p-6">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">Orders by Status</h2>
-            <canvas id="ordersChart" height="200"></canvas>
+            <div class="h-[200px]">
+                <canvas id="ordersChart"></canvas>
+            </div>
         </div>
-        
+
         <!-- Today's Summary -->
         <div class="bg-white rounded-lg shadow-md p-6">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">Today's Summary</h2>
@@ -95,19 +97,22 @@
                 <div class="flex items-center justify-between p-4 bg-green-50 rounded-lg">
                     <span class="text-gray-700">Paid Orders</span>
                     <span class="text-2xl font-bold text-green-600">
-                        {% for status in orders_by_status %}
-                            {% if status.status == 'Paid' %}{{ status.count }}{% endif %}
-                        {% endfor %}
+                        {{ paid_orders_count }}
                     </span>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <!-- Recent Orders -->
     <div class="bg-white rounded-lg shadow-md p-6">
-        <h2 class="text-xl font-semibold text-gray-800 mb-4">Recent Orders</h2>
-        <div class="overflow-x-auto">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold text-gray-800">Recent Orders</h2>
+            <a href="{% url 'adminpanel:admin_orders' %}" class="text-sm text-blue-600 hover:underline">View All</a>
+        </div>
+
+        <!-- Desktop View: Table -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
@@ -116,38 +121,42 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vendor</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     {% for order in recent_orders %}
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{{ order.oid }}</td>
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">#{{ order.oid }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {% if order.customer_name %}
-                                {{ order.customer_name }}
-                            {% elif order.buyer %}
-                                {{ order.buyer.username }}
-                            {% else %}
-                                Guest
-                            {% endif %}
-
+                            {% if order.customer_name %}{{ order.customer_name }}{% elif order.buyer %}{{
+                            order.buyer.username }}{% else %}Guest{% endif %}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {{ order.vendor.name|default:"N/A" }}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₦{{ order.total|floatformat:2 }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">₦{{
+                            order.total|floatformat:2 }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="px-2 py-1 text-xs font-semibold rounded-full 
-                                {% if order.status == 'Delivered' %}bg-green-100 text-green-800
+                                {% if order.status == 'Paid' %}bg-green-100 text-green-800
+                                {% elif order.status == 'Delivered' %}bg-green-100 text-green-800
                                 {% elif order.status == 'Processing' %}bg-blue-100 text-blue-800
                                 {% elif order.status == 'Pending' %}bg-yellow-100 text-yellow-800
                                 {% else %}bg-gray-100 text-gray-800{% endif %}">
                                 {{ order.status }}
                             </span>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {{ order.created_at|date:"M d, Y" }}
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            {% if order.status == 'Pending' %}
+                            <button onclick="updateOrderStatus({{ order.id }}, 'Paid')"
+                                class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-md active:scale-95 transition duration-200">
+                                Verify & Paid
+                            </button>
+                            {% else %}
+                            <span
+                                class="text-xs text-gray-400 font-bold bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">Verified</span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
@@ -158,34 +167,64 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Mobile View: Simple Cards -->
+        <div class="md:hidden space-y-4">
+            {% for order in recent_orders %}
+            <div class="border border-gray-100 rounded-lg p-4 space-y-2">
+                <div class="flex justify-between items-center">
+                    <span class="font-bold text-gray-900">#{{ order.oid }}</span>
+                    <span class="px-2 py-1 text-[10px] font-bold uppercase rounded-full 
+                        {% if order.status == 'Paid' %}bg-green-100 text-green-800
+                        {% elif order.status == 'Pending' %}bg-yellow-100 text-yellow-800
+                        {% else %}bg-gray-100 text-gray-800{% endif %}">
+                        {{ order.status }}
+                    </span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-500 italic">{% if order.customer_name %}{{ order.customer_name|slice:":15"
+                        }}{% elif order.buyer %}{{ order.buyer.username|slice:":15" }}{% else %}Guest{% endif %}</span>
+                    <span class="font-bold">₦{{ order.total|floatformat:2 }}</span>
+                </div>
+                {% if order.status == 'Pending' %}
+                <button onclick="updateOrderStatus({{ order.id }}, 'Paid')"
+                    class="w-full mt-3 bg-blue-600 text-white text-sm font-black py-4 rounded-2xl shadow-lg active:ring-4 active:ring-blue-100 transition-all">
+                    VERIFY PAYMENT
+                </button>
+                {% endif %}
+            </div>
+            {% empty %}
+            <p class="text-center text-gray-500 py-4">No recent orders</p>
+            {% endfor %}
+        </div>
     </div>
 </div>
 
 {% block extra_js %}
 <script>
-    // Orders Chart
+    // Orders Chart (Responsive maintenance)
     const ctx = document.getElementById('ordersChart').getContext('2d');
     const ordersData = {
-        labels: [{% for status in orders_by_status %}'{{ status.status }}'{% if not forloop.last %},{% endif %}{% endfor %}],
-        datasets: [{
-            label: 'Orders',
-            data: [{% for status in orders_by_status %}{{ status.count }}{% if not forloop.last %},{% endif %}{% endfor %}],
-            backgroundColor: [
-                'rgba(59, 130, 246, 0.5)',
-                'rgba(16, 185, 129, 0.5)',
-                'rgba(245, 158, 11, 0.5)',
-                'rgba(239, 68, 68, 0.5)',
-            ],
-            borderColor: [
-                'rgba(59, 130, 246, 1)',
-                'rgba(16, 185, 129, 1)',
-                'rgba(245, 158, 11, 1)',
-                'rgba(239, 68, 68, 1)',
-            ],
+        labels: [{% for status in orders_by_status %}'{{ status.status }}'{% if not forloop.last %}, {% endif %} {% endfor %}],
+    datasets: [{
+        label: 'Orders',
+        data: [{% for status in orders_by_status %}{{ status.count }}{% if not forloop.last %}, {% endif %} {% endfor %}],
+    backgroundColor: [
+        'rgba(59, 130, 246, 0.5)',
+        'rgba(16, 185, 129, 0.5)',
+        'rgba(245, 158, 11, 0.5)',
+        'rgba(239, 68, 68, 0.5)',
+    ],
+        borderColor: [
+            'rgba(59, 130, 246, 1)',
+            'rgba(16, 185, 129, 1)',
+            'rgba(245, 158, 11, 1)',
+            'rgba(239, 68, 68, 1)',
+        ],
             borderWidth: 1
         }]
     };
-    
+
     new Chart(ctx, {
         type: 'doughnut',
         data: ordersData,
@@ -194,7 +233,34 @@
             maintainAspectRatio: false,
         }
     });
+
+    function updateOrderStatus(orderId, status) {
+        if (!confirm(`Mark Order #${orderId} as ${status}?`)) return;
+
+        const formData = new FormData();
+        formData.append('status', status);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        fetch(`/admin/vendor-manager/update-order/${orderId}/`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Update failed');
+            });
+    }
 </script>
 {% endblock %}
 {% endblock %}
-

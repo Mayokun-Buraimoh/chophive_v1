@@ -3,14 +3,15 @@
 <nav class="bg-white shadow-md border-b border-gray-200">
     <div class="px-4 py-3">
         <div class="flex items-center justify-between">
-            <!-- Mobile menu button -->
-            <button onclick="toggleMobileMenu()" class="md:hidden text-gray-600 hover:text-gray-900">
+            <!-- Mobile menu button (Hidden if using bottom nav for main links, but keeping for 'More' menu) -->
+            <button onclick="toggleMobileMenu()"
+                class="md:hidden text-gray-600 hover:text-gray-900 h-10 w-10 flex items-center justify-center">
                 <i class="fas fa-bars text-xl"></i>
             </button>
 
-            <!-- Logo/Brand -->
-            <div class="flex items-center">
-                <h1 class="text-xl font-bold text-gray-800">ChopHive Admin</h1>
+            <!-- Logo/Brand (Centered on Mobile) -->
+            <div class="flex items-center absolute left-1/2 -translate-x-1/2 md:relative md:left-0 md:translate-x-0">
+                <h1 class="text-lg md:text-xl font-black tracking-tight text-gray-800">CHOPHIVE</h1>
             </div>
 
             <!-- Profile dropdown -->

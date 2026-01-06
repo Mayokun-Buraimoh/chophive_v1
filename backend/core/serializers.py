@@ -18,10 +18,16 @@ class HostelSerializer(serializers.ModelSerializer):
 
 
 class DeliveryBatchSerializer(serializers.ModelSerializer):
+    formatted_end_time = serializers.SerializerMethodField()
 
     class Meta:
         model = DeliveryBatch
-        fields = '__all__'
+        fields = ['id', 'name', 'start_time', 'cutoff_time', 'is_active', 'formatted_end_time']
+
+    def get_formatted_end_time(self, obj):
+        if obj.cutoff_time:
+            return obj.cutoff_time.strftime("%I:%M %p").lstrip('0')
+        return None
 
 
 class CategorySerializer(serializers.ModelSerializer):

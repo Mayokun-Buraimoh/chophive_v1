@@ -13,8 +13,9 @@ urlpatterns = [
     # Login
     path('login/', dashboard.login_view, name='login'),
     
-    # Admin Dashboard
+    # Admin Dashboard & Orders
     path('dashboard/', dashboard.AdminDashboardView.as_view(), name='admin_dashboard'),
+    path('orders/', dashboard.AdminOrderListView.as_view(), name='admin_orders'),
     
     # Vendor Manager Dashboard
     path('vendor-manager/', vendors.VendorDashboardView.as_view(), name='vendor_dashboard'),

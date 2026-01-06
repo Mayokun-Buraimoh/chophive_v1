@@ -19,6 +19,7 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
         ('OTP', {'fields': ('otp',)}),
     )
     
+    
     add_fieldsets = (
         (None, {
             'classes': ('wide',),

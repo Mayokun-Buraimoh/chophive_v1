@@ -1120,23 +1120,54 @@ class CreateOrderAPIView(generics.CreateAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        batch_obj = None
-        # support ID or Name
+# Resolve batch by ID or name
         try:
-            if isinstance(delivery_batch, int) or (isinstance(delivery_batch, str) and delivery_batch.isdigit()):
-                batch_obj = DeliveryBatch.objects.get(id=delivery_batch)
+            if isinstance(delivery_batch, int) or (
+                isinstance(delivery_batch, str) and delivery_batch.isdigit()
+            ):
+                batch_obj = DeliveryBatch.objects.get(id=int(delivery_batch))
             else:
-                batch_obj = DeliveryBatch.objects.get(name=delivery_batch)
-            
-            # Check if batch is active and within time
-            now = timezone.localtime().time()
-            if not batch_obj.is_active:
-                    return Response({"error": f"Delivery batch '{batch_obj.name}' is inactive"}, status=status.HTTP_400_BAD_REQUEST)
-            if batch_obj.cutoff_time <= now:
-                    return Response({"error": f"Delivery batch '{batch_obj.name}' has closed for today (Cutoff: {batch_obj.cutoff_time})"}, status=status.HTTP_400_BAD_REQUEST)
-                    
+                batch_obj = DeliveryBatch.objects.get(name__iexact=delivery_batch)
+
         except DeliveryBatch.DoesNotExist:
-                return Response({"error": f"Delivery batch not found: {delivery_batch}"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": f"Delivery batch not found: {delivery_batch}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not batch_obj.is_open_now():
+            return Response(
+                {
+                    "error": (
+                        f"Delivery batch '{batch_obj.name}' is currently closed for today. "
+                        f"Ordering window: {batch_obj.start_time} – {batch_obj.cutoff_time}"
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        # if not delivery_batch:
+        #     return Response(
+        #         {"error": "delivery_batch is required"},
+        #         status=status.HTTP_400_BAD_REQUEST
+        #     )
+
+        # batch_obj = None
+        # # support ID or Name
+        # try:
+        #     if isinstance(delivery_batch, int) or (isinstance(delivery_batch, str) and delivery_batch.isdigit()):
+        #         batch_obj = DeliveryBatch.objects.get(id=delivery_batch)
+        #     else:
+        #         batch_obj = DeliveryBatch.objects.get(name=delivery_batch)
+            
+        #     # Check if batch is active and within time
+        #     now = timezone.localtime().time()
+        #     if not batch_obj.is_active:
+        #             return Response({"error": f"Delivery batch '{batch_obj.name}' is inactive"}, status=status.HTTP_400_BAD_REQUEST)
+        #     if batch_obj.cutoff_time <= now:
+        #             return Response({"error": f"Delivery batch '{batch_obj.name}' has closed for today (Cutoff: {batch_obj.cutoff_time})"}, status=status.HTTP_400_BAD_REQUEST)
+                    
+        # except DeliveryBatch.DoesNotExist:
+        #         return Response({"error": f"Delivery batch not found: {delivery_batch}"}, status=status.HTTP_400_BAD_REQUEST)
         
         if not cart_id:
             return Response(
@@ -1155,7 +1186,12 @@ class CreateOrderAPIView(generics.CreateAPIView):
 
         # Get cart items - use CartItem instead of Cart
         try:
-            cart = Cart.objects.get(cart_id=cart_id, user=user) if user else Cart.objects.get(cart_id=cart_id)
+            # Resilient lookup: prioritize user's cart if authenticated, otherwise use cart_id
+            if user:
+                cart = Cart.objects.get(user=user)
+            else:
+                cart = Cart.objects.get(cart_id=cart_id)
+            
             cart_items = CartItem.objects.filter(cart=cart)
         except Cart.DoesNotExist:
             return Response(

@@ -7,7 +7,7 @@ from django.utils.safestring import mark_safe
 from userauths.models import User
 from shortuuid.django_fields import ShortUUIDField
 from django.utils import timezone
-
+from datetime import time
 # Create your models here.
 class Vendor(models.Model):
     user = models.OneToOneField(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='vendor', help_text="User account associated with this vendor")
@@ -275,17 +275,41 @@ class Rider(models.Model):
     def __str__(self):
         return f"Rider: {self.user.username}"
  
-
 class DeliveryBatch(models.Model):
-    """
-    Delivery batches with cutoff times.
-    """
-    name = models.CharField(max_length=50, help_text="Batch name (e.g., '1pm Delivery')")
-    cutoff_time = models.TimeField(help_text="Time after which this batch is unavailable")
+    name = models.CharField(max_length=50, unique=True)
+    start_time = models.TimeField(default="08:00")
+    cutoff_time = models.TimeField(default="18:00")
+
     is_active = models.BooleanField(default=True)
-    
+
+    def is_open_now(self):
+        """Returns True if batch is open for ordering now. Handles midnight wrap-around."""
+        if not self.is_active:
+            return False
+            
+        now = timezone.localtime().time()
+        
+        if self.start_time <= self.cutoff_time:
+            # Normal case (e.g., 8am to 6pm)
+            return self.start_time <= now < self.cutoff_time
+        else:
+            # Midnight wrap-around (e.g., 8pm to 3am)
+            return now >= self.start_time or now < self.cutoff_time
+
     def __str__(self):
-        return f"{self.name} (Cutoff: {self.cutoff_time})"
+        return self.name
+
+
+# class DeliveryBatch(models.Model):
+#     """
+#     Delivery batches with cutoff times.
+#     """
+#     name = models.CharField(max_length=50, help_text="Batch name (e.g., '1pm Delivery')")
+#     cutoff_time = models.TimeField(help_text="Time after which this batch is unavailable")
+#     is_active = models.BooleanField(default=True)
+    
+#     def __str__(self):
+#         return f"{self.name} (Cutoff: {self.cutoff_time})"
 
 
 class Order(models.Model):
@@ -294,6 +318,7 @@ class Order(models.Model):
     """
     STATUS_CHOICES = [
         ('Pending', 'Pending'),
+        ('Paid', 'Paid'),
         ('Processing', 'Processing'),
         ('Delivered', 'Delivered'),
         ('Cancelled', 'Cancelled'),
@@ -412,7 +437,13 @@ class OrderItem(models.Model):
             return f"OrderItem #{self.id}"
     
     @property
+    def vendor_name(self):
+        """Return the vendor name or 'Vendor' if not found."""
+        return self.vendor.name if self.vendor else "Vendor"
+
+    @property
     def subtotal(self):
+
         """Calculate subtotal for this order item."""
         return self.price * self.quantity
 

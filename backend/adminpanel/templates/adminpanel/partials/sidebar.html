@@ -15,10 +15,18 @@
             </li>
             {% endif %}
 
-            {% if user_role == 'admin' or user_role == 'vendor_manager' %}
+            {% if user_role == 'admin' %}
             <li>
-                <a href="{% if user_role == 'admin' %}{% url 'adminpanel:admin_dashboard' %}{% else %}{% url 'adminpanel:vendor_dashboard' %}{% endif %}"
-                    class="flex items-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100">
+                <a href="{% url 'adminpanel:admin_orders' %}"
+                    class="flex items-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 {% if request.resolver_match.url_name == 'admin_orders' %}bg-gray-100 font-semibold{% endif %}">
+                    <i class="fas fa-shopping-cart mr-3"></i>
+                    <span>Orders</span>
+                </a>
+            </li>
+            {% elif user_role == 'vendor_manager' %}
+            <li>
+                <a href="{% url 'adminpanel:vendor_dashboard' %}"
+                    class="flex items-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 {% if request.resolver_match.url_name == 'vendor_dashboard' %}bg-gray-100 font-semibold{% endif %}">
                     <i class="fas fa-shopping-cart mr-3"></i>
                     <span>Orders</span>
                 </a>
@@ -77,11 +85,18 @@
                 </li>
                 {% endif %}
 
-                {% if user_role == 'admin' or user_role == 'vendor_manager' %}
+                {% if user_role == 'admin' %}
                 <li>
-                    <a href="{% if user_role == 'admin' %}{% url 'adminpanel:admin_dashboard' %}{% else %}{% url 'adminpanel:vendor_dashboard' %}{% endif %}"
-                        onclick="toggleMobileMenu()"
-                        class="flex items-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100">
+                    <a href="{% url 'adminpanel:admin_orders' %}" onclick="toggleMobileMenu()"
+                        class="flex items-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 {% if request.resolver_match.url_name == 'admin_orders' %}bg-gray-100 font-semibold{% endif %}">
+                        <i class="fas fa-shopping-cart mr-3"></i>
+                        <span>Orders</span>
+                    </a>
+                </li>
+                {% elif user_role == 'vendor_manager' %}
+                <li>
+                    <a href="{% url 'adminpanel:vendor_dashboard' %}" onclick="toggleMobileMenu()"
+                        class="flex items-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 {% if request.resolver_match.url_name == 'vendor_dashboard' %}bg-gray-100 font-semibold{% endif %}">
                         <i class="fas fa-shopping-cart mr-3"></i>
                         <span>Orders</span>
                     </a>

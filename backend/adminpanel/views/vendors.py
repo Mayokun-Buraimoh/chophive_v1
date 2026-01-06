@@ -60,8 +60,11 @@ class VendorDashboardView(TemplateView):
         # Get active tab from request
         active_tab = self.request.GET.get('tab', 'today')
         
-        # Base query filtered by vendor
-        base_qs = Order.objects.filter(vendor=vendor).select_related('buyer', 'vendor').prefetch_related('items')
+        # Base query filtered by vendor. ONLY show orders that are verified (Paid, Processing, Delivered)
+        base_qs = Order.objects.filter(
+            vendor=vendor, 
+            status__in=['Paid', 'Processing', 'Delivered', 'Cancelled']
+        ).select_related('buyer', 'vendor').prefetch_related('items')
         
         if active_tab == 'today':
             # Orders Today
@@ -84,6 +87,7 @@ class VendorDashboardView(TemplateView):
         today_orders_count = today_qs.count()
         pending_count = today_qs.filter(status='Pending').count()
         packaging_count = today_qs.filter(status='Processing').count()
+        paid_count = today_qs.filter(status='Paid').count()
         delivered_count = today_qs.filter(status='Delivered').count()
         
         context.update({
@@ -95,6 +99,7 @@ class VendorDashboardView(TemplateView):
             'today_orders_count': today_orders_count,
             'pending_count': pending_count,
             'packaging_count': packaging_count,
+            'paid_count': paid_count,
             'delivered_count': delivered_count,
             'today': today,
         })
@@ -119,7 +124,7 @@ def update_order_status(request, order_id):
 
             new_status = request.POST.get('status')
             
-            if new_status in ['Pending', 'Processing', 'Delivered', 'Cancelled']:
+            if new_status in ['Pending', 'Paid', 'Processing', 'Delivered', 'Cancelled']:
                 order.status = new_status
                 order.save()
                 return JsonResponse({'success': True, 'status': new_status})

@@ -10,6 +10,7 @@ from datetime import timedelta
 from core.models import Order, Vendor, OrderItem
 from userauths.models import User
 from adminpanel.permissions import is_admin, require_role, ADMIN_GROUP, CAFETERIA_MANAGER_GROUP, RIDER_GROUP
+from django.views.generic import ListView
 
 
 class AdminDashboardView(TemplateView):
@@ -48,7 +49,7 @@ class AdminDashboardView(TemplateView):
         ).aggregate(total=Sum('total'))['total'] or 0
         
         # Recent orders (last 10)
-        recent_orders = Order.objects.select_related('buyer', 'vendor').prefetch_related('items')[:10]
+        recent_orders = Order.objects.select_related('buyer', 'vendor').prefetch_related('items').order_by('-created_at')[:10]
         
         # Orders by status
         orders_by_status = Order.objects.values('status').annotate(count=Count('id'))
@@ -66,10 +67,46 @@ class AdminDashboardView(TemplateView):
             'total_revenue': total_revenue,
             'recent_orders': recent_orders,
             'orders_by_status': orders_by_status,
+            'paid_orders_count': Order.objects.filter(status='Paid').count(),
             'today_orders': today_orders,
             'today': today,
         })
         
+        return context
+
+
+class AdminOrderListView(ListView):
+    """View for managing and verifying all orders (Admin only)"""
+    model = Order
+    template_name = 'adminpanel/dashboard/admin_orders.html'
+    context_object_name = 'orders'
+    paginate_by = 25
+    
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('adminpanel:login')
+        if not is_admin(request.user):
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied("You don't have permission to access this page.")
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get_queryset(self):
+        # Allow multi-status filtering via query params
+        status_filter = self.request.GET.get('status')
+        queryset = Order.objects.select_related('buyer', 'vendor', 'hostel').prefetch_related('items').order_by('-created_at')
+        
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from adminpanel.permissions import get_user_role
+        context.update({
+            'user_role': get_user_role(self.request.user),
+            'status_choices': Order.STATUS_CHOICES,
+            'current_status': self.request.GET.get('status', 'all'),
+        })
         return context
 
 
