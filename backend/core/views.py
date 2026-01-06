@@ -1247,16 +1247,19 @@ class CreateOrderAPIView(generics.CreateAPIView):
             base_service_fee = site_settings.service_fee
             
             # Calculate total packs and total fees
-            total_packs = sum(item.quantity for item in cart_items)
-            total_delivery_fee = base_delivery_fee * total_packs
-            total_service_fee = base_service_fee * total_packs
-
-            # Calculate Pack Fees based on unique vendors
+            # Calculate unique vendors
             unique_vendors = set()
             for cart_item in cart_items:
                 if cart_item.vendor:
                     unique_vendors.add(cart_item.vendor)
             
+            # total_packs is determined by the number of unique vendors ordered from
+            total_packs = len(unique_vendors) if unique_vendors else 1
+            
+            total_delivery_fee = base_delivery_fee * total_packs
+            total_service_fee = base_service_fee * total_packs
+
+            # Calculate total_pack_fee by summing each vendor's individual pack_fee
             total_pack_fee = sum(v.pack_fee for v in unique_vendors)
             
             for cart_item in cart_items:

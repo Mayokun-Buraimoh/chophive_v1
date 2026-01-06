@@ -114,11 +114,12 @@ def update_order_status(request, order_id):
     
     if request.method == 'POST':
         try:
-            # Ensure order belongs to the vendor
-            if hasattr(request.user, 'vendor'):
+            # Priority 1: Admins have full access to all orders
+            if is_admin(request.user):
+                order = Order.objects.get(id=order_id)
+            # Priority 2: Vendors only have access to their own orders
+            elif hasattr(request.user, 'vendor'):
                 order = Order.objects.get(id=order_id, vendor=request.user.vendor)
-            elif is_admin(request.user):
-                 order = Order.objects.get(id=order_id)
             else:
                 return JsonResponse({'error': 'Unauthorized'}, status=403)
 
