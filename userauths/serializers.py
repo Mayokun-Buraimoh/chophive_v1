@@ -145,23 +145,3 @@ class ProfileSerializer(serializers.ModelSerializer):
     
 class PasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField()
-
-
-class VerifyEmailView(APIView):
-    serializer_class = None  # avoids DRF/OpenAPI warning
-
-    def get(self, request):
-        token = request.query_params.get('token')
-        if not token:
-            return Response({"detail": "Token is required"}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            payload = AccessToken(token)
-            user_id = payload['user_id']
-            user = User.objects.get(id=user_id)
-            if not user.is_email_verified:
-                user.is_email_verified = True
-                user.is_active = True
-                user.save()
-            return Response({"detail": "Email verified successfully"})
-        except Exception as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
