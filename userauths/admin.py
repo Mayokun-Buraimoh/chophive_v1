@@ -6,7 +6,7 @@ from userauths.models import User, Profile
 # Register your models here.
 class UserAdmin(BaseUserAdmin, ModelAdmin):
     list_display = ['email', 'username', 'first_name', 'last_name', 'is_active', 'is_staff', 'is_superuser', 'date_joined']
-    search_fields = ['email''username', 'first_name', 'last_name']
+    search_fields = ['email', 'username', 'first_name', 'last_name']
     list_filter = ['is_active', 'is_staff', 'is_superuser', 'date_joined']
     list_per_page = 10
     ordering = ['-date_joined']
