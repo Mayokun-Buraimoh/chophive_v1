@@ -38,3 +38,4 @@ tablib==3.9.0
 tzdata==2025.2
 uritemplate==4.2.0
 urllib3==2.6.2
+whitenoise==6.11.0
