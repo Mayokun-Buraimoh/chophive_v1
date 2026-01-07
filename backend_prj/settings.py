@@ -210,7 +210,7 @@ REST_FRAMEWORK = {
 }
 
 ANYMAIL = {
-    "BREVO_API_KEY": env("BREVO_API_KEY"),
+    "BREVO_API_KEY": BREVO_API_KEY,
 }
 
 FROM_EMAIL = "ChopHive <no-reply@chophive.com>"

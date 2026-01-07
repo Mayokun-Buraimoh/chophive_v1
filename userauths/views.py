@@ -143,7 +143,7 @@ class PasswordEmailVerify(generics.RetrieveAPIView):
 
         # 5️⃣ Build reset link
         link = (
-            f"http://localhost:5173/create-new-password"
+            f"https://chophive-frontend-v1.vercel.app/create-new-password"
             f"?otp={user.otp}&uidb64={uidb64}&reset_token={reset_token}"
         )
 
