@@ -32,7 +32,7 @@ SECRET_KEY = 'django-insecure-y(m4ssw(juk#6-@yl3xxw)7mg0m)jai%f2y$ifqug0t1#(csge
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'chophive-v1-1.onrender.com', 'chophive-frontend-v1.vercel.app']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'chophive-v1-1.onrender.com', 'chophive-frontend-v1.vercel.app', 'chophive-frontend.onrender.com']
 
 # CSRF & Session Settings (Fix for persistent localhost errors)
 CSRF_TRUSTED_ORIGINS = [
@@ -240,6 +240,7 @@ SPECTACULAR_SETTINGS = {
 
 # CORS Settings
 CORS_ALLOWED_ORIGINS = [
+    "https://chophive-frontend.onrender.com",
     "https://chophive-frontend-v1.vercel.app",
     "https://chophive-v1-1.onrender.com",
 ]
