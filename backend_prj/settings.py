@@ -14,14 +14,15 @@ from datetime import timedelta
 from pathlib import Path
 from environs import Env
 
-env = Env()
-env.read_env()
 
-BREVO_API_KEY = env("BREVO_API_KEY") 
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
+env = Env()
+env.read_env()
+BREVO_API_KEY = env("BREVO_API_KEY") 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
@@ -179,10 +180,15 @@ LOGOUT_REDIRECT_URL = '/admin/login/'
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 
-STATICFILES_DIRS = [BASE_DIR, 'static']
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+# This is for local static files you create
+STATICFILES_DIRS = [
+    BASE_DIR / "static",  # <-- folder where you put CSS/JS/images
+]
+
+# This is where collectstatic will gather all static files for deployment
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
