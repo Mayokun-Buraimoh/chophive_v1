@@ -1,11 +1,12 @@
 from django.contrib.auth.password_validation import validate_password
-from rest_framework import serializers
+from rest_framework import serializers, status
+from rest_framework.views import APIView, Response
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from userauths.models import Profile, User
 from django.conf import settings
 from django.urls import reverse
 from django.core.mail import EmailMultiAlternatives
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from sib_api_v3_sdk import ApiClient, TransactionalEmailsApi
 from sib_api_v3_sdk.configuration import Configuration
 from sib_api_v3_sdk.models import SendSmtpEmail
@@ -144,3 +145,23 @@ class ProfileSerializer(serializers.ModelSerializer):
     
 class PasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField()
+
+
+class VerifyEmailView(APIView):
+    serializer_class = None  # avoids DRF/OpenAPI warning
+
+    def get(self, request):
+        token = request.query_params.get('token')
+        if not token:
+            return Response({"detail": "Token is required"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            payload = AccessToken(token)
+            user_id = payload['user_id']
+            user = User.objects.get(id=user_id)
+            if not user.is_email_verified:
+                user.is_email_verified = True
+                user.is_active = True
+                user.save()
+            return Response({"detail": "Email verified successfully"})
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)

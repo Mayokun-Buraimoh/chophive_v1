@@ -33,7 +33,7 @@ import random
 
 
 # Serializers
-from userauths.serializers import MyTokenObtainPairSerializer, ProfileSerializer, RegisterSerializer, UserSerializer
+from userauths.serializers import MyTokenObtainPairSerializer, ProfileSerializer, RegisterSerializer, UserSerializer, GoogleSignInSerializer, VerifyEmailSerializer
 
 User = get_user_model()
 
@@ -69,6 +69,7 @@ class RegisterView(generics.CreateAPIView):
 
 class VerifyEmailView(APIView):
     permission_classes = [AllowAny]
+    serializer_class = VerifyEmailSerializer
 
     def get(self, request):
         token = request.query_params.get("token")
@@ -308,6 +309,7 @@ class GoogleSignInView(generics.GenericAPIView):
     verifies it, creates or gets the user, and returns JWT tokens.
     """
     permission_classes = [AllowAny]
+    serializer_class = GoogleSignInSerializer  # <--- add this
     
     def post(self, request, *args, **kwargs):
         credential = request.data.get('credential')
