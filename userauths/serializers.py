@@ -48,7 +48,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         # 🔐 Generate verification token
         token = RefreshToken.for_user(user).access_token
 
-        verify_url = f"https://chophive-frontend-v2.vercel.app/verify-email?token={token}"
+        verify_url = f"https://chophive-frontend-v3.vercel.app/verify-email?token={token}"
 
         # 📧 Render HTML email
         html_body = render_to_string(
