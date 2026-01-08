@@ -233,7 +233,7 @@ class PasswordEmailVerify(APIView):
 #             msg.send()
 #         return user
     
-class PasswordChangeView(generics.APIView):
+class PasswordChangeView(APIView):
     permission_classes = (AllowAny,)
     serializer_class = UserSerializer
 
