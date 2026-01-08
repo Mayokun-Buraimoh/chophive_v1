@@ -1,4 +1,5 @@
 
+import uuid
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.core.mail import EmailMultiAlternatives
@@ -116,9 +117,9 @@ def generate_numeric_otp(length=7):
         otp = ''.join([str(random.randint(0, 9)) for _ in range(length)])
         return otp
 
-class PasswordEmailVerify(generics.RetrieveAPIView):
+class PasswordEmailVerify(APIView):
     permission_classes = (AllowAny,)
-    serializer_class = UserSerializer
+    # serializer_class = UserSerializer
 
     def get_object(self):
         email = self.kwargs.get("email")
@@ -126,17 +127,22 @@ class PasswordEmailVerify(generics.RetrieveAPIView):
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            raise NotFound("User with this email does not exist")
-
+            return Response(
+                {"message": "If the email exists, a reset link was sent"},
+                status=200
+            )
         # 1️⃣ Generate OTP
-        user.otp = generate_numeric_otp()
+        otp = generate_numeric_otp()
 
         # 2️⃣ Encode user ID properly
         uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
 
         # 3️⃣ Generate short-lived JWT reset token
-        refresh = RefreshToken.for_user(user)
-        reset_token = str(refresh.access_token)
+        # refresh = RefreshToken.for_user(user)
+        # reset_token = str(refresh.access_token)
+        
+        reset_token = uuid.uuid4().hex
+        user.otp = otp
 
         # 4️⃣ Save OTP + reset token
         user.reset_token = reset_token
@@ -227,7 +233,7 @@ class PasswordEmailVerify(generics.RetrieveAPIView):
 #             msg.send()
 #         return user
     
-class PasswordChangeView(generics.CreateAPIView):
+class PasswordChangeView(generics.APIView):
     permission_classes = (AllowAny,)
     serializer_class = UserSerializer
 
