@@ -180,15 +180,26 @@ LOGOUT_REDIRECT_URL = '/admin/login/'
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
+# STATIC_URL = '/static/'
+
+# # This is for local static files you create
+# STATICFILES_DIRS = [
+#     BASE_DIR / "static",  # <-- folder where you put CSS/JS/images
+# ]
+
+# # This is where collectstatic will gather all static files for deployment
+# STATIC_ROOT = BASE_DIR / "staticfiles"
+
+
+
 STATIC_URL = '/static/'
 
-# This is for local static files you create
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
 STATICFILES_DIRS = [
-    BASE_DIR / "static",  # <-- folder where you put CSS/JS/images
+    os.path.join(BASE_DIR, 'static'),  # only if this folder exists
 ]
 
-# This is where collectstatic will gather all static files for deployment
-STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
