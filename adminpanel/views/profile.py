@@ -30,7 +30,10 @@ class ProfileView(TemplateView):
         raw_role = get_user_role(self.request.user)  # e.g. "vendor_manager"
         context['profile'] = profile
         context['user'] = self.request.user
-        context['user_role'] = raw_role.replace("_", " ").title()
+        if raw_role:
+            context['user_role'] = raw_role.replace("_", " ").title()
+        else:
+            context['user_role'] = "User"
         # context['user_role'] = get_user_role(self.request.user)
         
         return context
