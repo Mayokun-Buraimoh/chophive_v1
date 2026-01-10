@@ -15,29 +15,29 @@
 
     <!-- Stats Cards (Scrollable on mobile) -->
     <div
-        class="flex overflow-x-auto pb-4 md:pb-0 gap-4 md:grid md:grid-cols-5 scrollbar-hide -mx-2 px-2 md:mx-0 md:px-0">
+        class="flex overflow-x-auto pb-4 md:pb-0 gap-4 md:grid md:grid-cols-5 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory">
         <div
-            class="min-w-[140px] md:min-w-0 bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-500 flex-shrink-0">
+            class="min-w-[140px] md:min-w-0 bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-500 flex-shrink-0 snap-center">
             <p class="text-[10px] md:text-sm text-gray-600 uppercase font-semibold">Today</p>
             <p class="text-xl md:text-2xl font-bold text-gray-800">{{ today_orders_count }}</p>
         </div>
         <div
-            class="min-w-[140px] md:min-w-0 bg-white rounded-lg shadow-md p-4 border-l-4 border-yellow-500 flex-shrink-0">
+            class="min-w-[140px] md:min-w-0 bg-white rounded-lg shadow-md p-4 border-l-4 border-yellow-500 flex-shrink-0 snap-center">
             <p class="text-[10px] md:text-sm text-gray-600 uppercase font-semibold">Unpaid</p>
             <p class="text-xl md:text-2xl font-bold text-yellow-600">{{ pending_count }}</p>
         </div>
         <div
-            class="min-w-[140px] md:min-w-0 bg-white rounded-lg shadow-md p-4 border-l-4 border-green-500 flex-shrink-0">
+            class="min-w-[140px] md:min-w-0 bg-white rounded-lg shadow-md p-4 border-l-4 border-green-500 flex-shrink-0 snap-center">
             <p class="text-[10px] md:text-sm text-gray-600 uppercase font-semibold">Verified</p>
             <p class="text-xl md:text-2xl font-bold text-green-600">{{ paid_count }}</p>
         </div>
         <div
-            class="min-w-[140px] md:min-w-0 bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-600 flex-shrink-0">
+            class="min-w-[140px] md:min-w-0 bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-600 flex-shrink-0 snap-center">
             <p class="text-[10px] md:text-sm text-gray-600 uppercase font-semibold">Packaging</p>
             <p class="text-xl md:text-2xl font-bold text-blue-600">{{ packaging_count }}</p>
         </div>
         <div
-            class="min-w-[140px] md:min-w-0 bg-white rounded-lg shadow-md p-4 border-l-4 border-gray-500 flex-shrink-0">
+            class="min-w-[140px] md:min-w-0 bg-white rounded-lg shadow-md p-4 border-l-4 border-gray-500 flex-shrink-0 snap-center">
             <p class="text-[10px] md:text-sm text-gray-600 uppercase font-semibold">Done</p>
             <p class="text-xl md:text-2xl font-bold text-gray-600">{{ delivered_count }}</p>
         </div>
@@ -72,11 +72,12 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {% for order in hostel_orders %}
                     <div
-                        class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300">
+                        class="bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm hover:shadow-md transition-all duration-300">
                         <div class="flex justify-between items-start mb-4">
                             <div>
-                                <h4 class="text-lg font-black text-gray-900">#{{ order.oid }}</h4>
-                                <p class="text-[11px] text-gray-400 font-medium">{{ order.created_at|date:"H:i" }} • {{
+                                <h4 class="text-base md:text-lg font-black text-gray-900">#{{ order.oid }}</h4>
+                                <p class="text-[10px] md:text-[11px] text-gray-400 font-medium">{{
+                                    order.created_at|date:"H:i" }} • {{
                                     order.delivery_batch|default:"ASAP" }}</p>
                             </div>
                             <span class="px-3 py-1 text-[10px] font-black uppercase rounded-full tracking-tighter
