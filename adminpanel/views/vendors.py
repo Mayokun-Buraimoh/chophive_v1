@@ -31,7 +31,8 @@ class VendorsListView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         from adminpanel.permissions import get_user_role
-        context['user_role'] = get_user_role(self.request.user)
+        raw_role = get_user_role(self.request.user)
+        context['user_role'] = raw_role.replace("_", " ").title() if raw_role else "User"
         context['total_vendors'] = Vendor.objects.count()
         context['active_vendors'] = Vendor.objects.filter(is_active=True).count()
         return context
@@ -90,8 +91,9 @@ class VendorDashboardView(TemplateView):
         paid_count = today_qs.filter(status='Paid').count()
         delivered_count = today_qs.filter(status='Delivered').count()
         
+        raw_role = get_user_role(self.request.user)
         context.update({
-            'user_role': get_user_role(self.request.user),
+            'user_role': raw_role.replace("_", " ").title() if raw_role else "User",
             'vendor': vendor,
             'active_tab': active_tab,
             'orders': orders,
