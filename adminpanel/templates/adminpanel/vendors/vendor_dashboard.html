@@ -119,13 +119,13 @@
                             <div class="relative">
                                 <select onchange="updateOrderStatus({{ order.id }}, this.value)"
                                     class="w-full appearance-none bg-gray-50 border border-transparent text-gray-900 text-sm font-bold rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-600 transition-all cursor-pointer">
-                                    <option value="Paid" {% if order.status=='Paid' %}selected{% endif %}>Verified
+                                    <option value="Paid" {% if order.status == 'Paid' %}selected{% endif %}>Verified
                                         (Waiting)</option>
-                                    <option value="Processing" {% if order.status=='Processing' %}selected{% endif %}>
+                                    <option value="Processing" {% if order.status == 'Processing' %}selected{% endif %}>
                                         Kitchen (Started)</option>
-                                    <option value="Delivered" {% if order.status=='Delivered' %}selected{% endif %}>
+                                    <option value="Delivered" {% if order.status == 'Delivered' %}selected{% endif %}>
                                         Ready / Done</option>
-                                    <option value="Cancelled" {% if order.status=='Cancelled' %}selected{% endif %}>
+                                    <option value="Cancelled" {% if order.status == 'Cancelled' %}selected{% endif %}>
                                         Reject</option>
                                 </select>
                                 <div
