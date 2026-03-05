@@ -16,7 +16,7 @@ def get_user_role(user):
     Get the primary role of a user based on their groups.
     Returns: 'admin', 'vendor_manager', 'rider', or None
     """
-    if not user.is_authenticated:
+    if not hasattr(user, 'is_authenticated') or not user.is_authenticated:
         return None
     
     if user.groups.filter(name=ADMIN_GROUP).exists():

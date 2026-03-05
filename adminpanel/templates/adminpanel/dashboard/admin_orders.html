@@ -74,8 +74,7 @@
                                 {% endfor %}
                             </div>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">₦{{
-                            order.total|floatformat:2 }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">₦{{ order.total|floatformat:2 }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
                                 {% if order.status == 'Paid' %}bg-green-100 text-green-800
@@ -153,8 +152,7 @@
                 </div>
                 <div class="col-span-2">
                     <p class="text-gray-500 text-xs uppercase font-semibold">Location</p>
-                    <p class="text-gray-900">{{ order.hostel.name|default:"N/A" }} - Rm {{
-                        order.room_address|default:"-" }}</p>
+                    <p class="text-gray-900">{{ order.hostel.name|default:"N/A" }} - Rm {{ order.room_address|default:"-" }}</p>
                 </div>
             </div>
 
@@ -198,8 +196,7 @@
             {% endif %}
 
             <span class="text-sm text-gray-700">
-                Page <span class="font-medium">{{ page_obj.number }}</span> of <span class="font-medium">{{
-                    paginator.num_pages }}</span>
+                Page <span class="font-medium">{{ page_obj.number }}</span> of <span class="font-medium">{{ paginator.num_pages }}</span>
             </span>
 
             {% if page_obj.has_next %}
